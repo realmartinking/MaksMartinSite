@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Maks Martin — Info</title>
+<style>
+  :root {
+    --bg:#ffffff; --fg:#000000;
+    --design-w:1440; --u:calc(100vw / var(--design-w));
+  }
+  :root[data-theme="dark"] { --bg:#000000; --fg:#ffffff; }
+  @media (max-width:768px) { :root { --design-w:600; } }
+
+  @font-face { font-family:'Gramatika'; src:url('fonts/GramatikaRegular.woff') format('woff'),url('fonts/Gramatika Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Gramatika'; src:url('fonts/GramatikaBold.woff') format('woff'),url('fonts/Gramatika Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Gramatika'; src:url('fonts/GramatikaSlanted.woff') format('woff'),url('fonts/Gramatika  Slanted.otf') format('opentype'); font-weight:400; font-style:italic; font-display:swap; }
+  @font-face { font-family:'Gramatika'; src:url('fonts/GramatikaBoldSlanted.woff') format('woff'),url('fonts/Gramatika Bold Slanted.otf') format('opentype'); font-weight:700; font-style:italic; font-display:swap; }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body {
+    width:100%; min-height:100%;
+    background:var(--bg); color:var(--fg);
+    font-family:'Gramatika',-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    transition:background-color .4s, color .4s;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── Nav ── */
+  .info-nav {
+    position:fixed; top:0; left:0; right:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:calc(18*var(--u)) calc(36*var(--u));
+  }
+  .nav-back {
+    font-family:'Gramatika',sans-serif; font-weight:700;
+    font-size:calc(17*var(--u)); color:var(--fg);
+    text-decoration:none; letter-spacing:-.01em;
+    transition:opacity .2s;
+  }
+  .nav-back:hover { opacity:.5; }
+  .theme-switch {
+    background:none; border:none; font-family:'Gramatika',sans-serif;
+    color:var(--fg); font-size:calc(17*var(--u)); font-weight:600;
+    cursor:pointer; padding:0; transition:opacity .2s,color .4s;
+  }
+  .theme-switch:hover { opacity:.5; }
+
+  /* ── Content ── */
+  .info-wrap {
+    max-width:calc(680*var(--u));
+    margin:0 auto;
+    padding:calc(120*var(--u)) calc(36*var(--u)) calc(80*var(--u));
+  }
+
+  .info-name {
+    font-size:calc(72*var(--u)); font-weight:700;
+    line-height:.9; letter-spacing:-.03em;
+    margin-bottom:calc(32*var(--u));
+  }
+
+  .info-bio {
+    font-size:calc(18*var(--u)); font-weight:400;
+    line-height:1.55; letter-spacing:-.01em;
+    color:var(--fg); opacity:.75;
+    margin-bottom:calc(56*var(--u));
+  }
+
+  .info-section-title {
+    font-size:calc(11*var(--u)); font-weight:700;
+    letter-spacing:.1em; text-transform:uppercase;
+    opacity:.4; margin-bottom:calc(16*var(--u));
+  }
+
+  .info-links {
+    display:flex; flex-direction:column; gap:calc(4*var(--u));
+    margin-bottom:calc(56*var(--u));
+  }
+  .info-links a {
+    font-size:calc(20*var(--u)); font-weight:700;
+    color:var(--fg); text-decoration:none;
+    letter-spacing:-.01em;
+    transition:opacity .15s;
+    display:inline-block;
+  }
+  .info-links a:hover { opacity:.45; }
+
+  .info-services {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:calc(4*var(--u)) calc(32*var(--u));
+    margin-bottom:calc(80*var(--u));
+  }
+  .info-service {
+    font-size:calc(16*var(--u)); font-weight:400;
+    line-height:1.4; opacity:.7;
+  }
+
+  .info-footer {
+    font-size:calc(13*var(--u)); opacity:.35;
+    padding-top:calc(32*var(--u));
+    border-top:1px solid currentColor;
+  }
+</style>
+</head>
+<body>
+
+<nav class="info-nav">
+  <a class="nav-back" href="index.html">← Maks Martin</a>
+  <button class="theme-switch" id="themeSwitch">dark</button>
+</nav>
+
+<main class="info-wrap">
+
+  <h1 class="info-name">Maks<br/>Martin</h1>
+
+  <p class="info-bio">
+    Graphic designer with a focus on brand identity, motion, and spatial design.
+    Based in Moscow. Creating timeless work that lives at the intersection
+    of classical form and contemporary culture.
+  </p>
+
+  <div class="info-section-title">Contact</div>
+  <div class="info-links">
+    <a href="mailto:hello@maksmartin.ru">hello@maksmartin.ru</a>
+    <a href="https://t.me/maksmartin" target="_blank">Telegram</a>
+  </div>
+
+  <div class="info-section-title">Services</div>
+  <div class="info-services">
+    <span class="info-service">Brand Identity</span>
+    <span class="info-service">Motion Design</span>
+    <span class="info-service">Art Direction</span>
+    <span class="info-service">Spatial & Environmental</span>
+    <span class="info-service">Packaging</span>
+    <span class="info-service">Editorial</span>
+  </div>
+
+  <div class="info-footer">© Maks Martin 2025</div>
+
+</main>
+
+<script>
+const root = document.documentElement;
+const sw   = document.getElementById('themeSwitch');
+
+function applyTheme(t) {
+  if (t==='dark') { root.setAttribute('data-theme','dark'); sw.textContent='light'; }
+  else            { root.removeAttribute('data-theme');      sw.textContent='dark'; }
+  localStorage.setItem('theme', t);
+}
+
+// Sync theme with main page via localStorage
+const saved = localStorage.getItem('theme');
+if (saved) applyTheme(saved);
+
+sw.addEventListener('click', ()=>{
+  applyTheme(root.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+});
+</script>
+</body>
+</html>
