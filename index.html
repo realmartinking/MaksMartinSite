@@ -46,7 +46,8 @@
     --tagline-dx: 200; --nav-top: 5; --nav-bottom: 8; --nav-font: 17;
     --tagline-align: left; --lockup-offset-x: 0; --lockup-offset-y: 0;
   }
-  :root[data-theme="dark"] { --bg: #000000; --fg: #ffffff; --tile-bg: #1a1a1a; }
+  :root { --emb-filter: url(#kill-white-bg); }
+  :root[data-theme="dark"] { --bg: #000000; --fg: #ffffff; --tile-bg: #1a1a1a; --emb-filter: url(#kill-white-bg) invert(1); }
   @media (max-width: 768px) { :root { --design-w: 600; } }
 
   @font-face { font-family:'Gramatika'; src:url('fonts/GramatikaRegular.woff') format('woff'),url('fonts/Gramatika Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
@@ -213,13 +214,9 @@
   .lockup-row { display:flex; align-items:flex-end; }
   .lockup-word { font-family:'Gramatika',-apple-system,sans-serif; font-weight:700; font-size:calc(var(--lk-font)*var(--u)); letter-spacing:0; line-height:.9; position:relative; z-index:2; }
   .lockup-emblem { width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); margin:0 calc(var(--emblem-margin)*var(--u)); transform:translate(calc(var(--emblem-dx)*var(--u)),calc(var(--emblem-dy)*var(--u))); display:inline-flex; align-items:center; justify-content:center; position:relative; z-index:1; flex-shrink:0; }
-  /* Emblem videos moved to #emblem-overlay (outside .world) for correct mix-blend-mode */
+  /* Emblem overlay: synced via render loop, filter via --emb-filter */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
-  #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; transition:opacity .4s ease; }
-  #emblem-overlay .emb-light { opacity:1; filter:url(#kill-white-bg); }
-  #emblem-overlay .emb-dark  { opacity:0; filter:url(#kill-black-bg); }
-  :root[data-theme="dark"] #emblem-overlay .emb-light { opacity:0; }
-  :root[data-theme="dark"] #emblem-overlay .emb-dark  { opacity:1; }
+  #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; filter:var(--emb-filter); }
   .lockup-tagline { font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); margin-top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
   .edit-active .lockup-tagline { cursor:text; }
 
@@ -303,11 +300,8 @@
   }
   .prl-emblem-video {
     position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
+    filter:var(--emb-filter);
   }
-  .prl-emblem-video.emb-light { filter:url(#kill-white-bg); }
-  .prl-emblem-video.emb-dark  { filter:url(#kill-black-bg); display:none; }
-  [data-theme="dark"] .prl-emblem-video.emb-light { display:none; }
-  [data-theme="dark"] .prl-emblem-video.emb-dark  { display:block; }
 
   /* Counter badge — right of emblem, baseline-aligned with lockup letters */
   .prl-counter {
@@ -350,8 +344,7 @@
 
 <div id="preloader">
   <div class="prl-emblem-wrap">
-    <video class="prl-emblem-video emb-light" src="assets/MaksMartinLogo.mp4"      autoplay muted loop playsinline preload="auto"></video>
-    <video class="prl-emblem-video emb-dark"  src="assets/MaksMartinLogoBlack.mp4" autoplay muted loop playsinline preload="auto"></video>
+    <video class="prl-emblem-video" src="assets/MaksMartinLogo.mp4" autoplay muted loop playsinline preload="auto"></video>
     <div class="prl-counter">0%</div>
   </div>
 </div>
@@ -360,10 +353,9 @@
   <div class="world" id="world"></div>
 </div>
 
-<!-- Emblem overlay: lives outside .world; SVG filters remove video background -->
+<!-- Emblem overlay: lives outside .world; SVG filter removes video background -->
 <div id="emblem-overlay" aria-hidden="true">
-  <video class="emb-light" src="assets/MaksMartinLogo.mp4"      muted autoplay loop playsinline></video>
-  <video class="emb-dark"  src="assets/MaksMartinLogoBlack.mp4" muted autoplay loop playsinline></video>
+  <video src="assets/MaksMartinLogo.mp4" muted autoplay loop playsinline></video>
 </div>
 <svg id="emblem-svg-defs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
   <defs>
