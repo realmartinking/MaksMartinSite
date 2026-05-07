@@ -994,13 +994,16 @@ function setTileMedia(tile, src, type) {
   tile.querySelectorAll('video,img').forEach(el=>el.remove());
   if (type==='video') {
     const v=document.createElement('video');
-    v.preload='none'; v.muted=true; v.autoplay=true; v.loop=true;
+    // preload=metadata: browser loads header only — Safari needs this to play() reliably.
+    // No autoplay attr — IntersectionObserver controls play/pause after world is positioned.
+    v.preload='metadata'; v.muted=true; v.loop=true;
     v.setAttribute('muted','');               // Safari requires attribute, not just property
     v.setAttribute('playsinline','');
     v.setAttribute('webkit-playsinline','');  // legacy iOS Safari
     v.src=src;
     tile.insertBefore(v, tile.firstChild);
-    tileVideoObserver.observe(v);
+    // Note: observation deferred — see init(). Observing here fires before world is
+    // positioned, causing Safari to see all tiles as off-screen and pause() them all.
   } else {
     const img=document.createElement('img');
     img.src=src; img.loading='lazy';
@@ -1155,6 +1158,8 @@ function rebuildAllBlocks() {
     BLOCKS[i].innerHTML='';
     buildBlock(BLOCKS[i], BLOCK_W, BLOCK_H, i);
   }
+  // World already positioned here — observe immediately (no delay needed)
+  document.querySelectorAll('.tile video').forEach(v => tileVideoObserver.observe(v));
 }
 
 /* ========================================================
@@ -1368,24 +1373,32 @@ async function init() {
   // Always start centered on lockup — hard reset before first render
   camX=0; camY=0; targetX=0; targetY=0; parallaxX=0; parallaxY=0;
 
-  // Observe all tile videos for play/pause by visibility
-  document.querySelectorAll('.tile video').forEach(v => tileVideoObserver.observe(v));
-
   requestAnimationFrame(render);
+
+  // Start observing AFTER world is positioned (2 rAF cycles):
+  //   Frame 1: render() fires → applies world transform → tiles visually appear on screen
+  //   Frame 2: IntersectionObserver evaluates against already-positioned world →
+  //            in-view tiles get isIntersecting:true → play() called correctly in all browsers
+  // Without this delay, Safari sees all tiles off-screen (world not yet transformed) and
+  // calls pause() on everything — then never re-fires because Safari's IO doesn't track
+  // CSS transform changes on ancestor elements (unlike Chrome).
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.tile video').forEach(v => tileVideoObserver.observe(v));
+  }));
 }
 
-// IntersectionObserver: load and play tile videos only when near viewport
+// IntersectionObserver: play tile videos when visible, pause when not.
+// Observation starts after init positions the world — see init() above.
 const tileVideoObserver = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     const v = e.target;
     if (e.isIntersecting) {
-      if (v.preload === 'none') { v.preload = 'auto'; v.load(); }
       v.play().catch(() => {});
     } else {
       v.pause();
     }
   });
-}, { rootMargin: '300px' });
+}, { rootMargin: '400px' });
 
 init();
 
