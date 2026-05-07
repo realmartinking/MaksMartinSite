@@ -204,11 +204,13 @@
   .lockup-row { display:flex; align-items:flex-end; }
   .lockup-word { font-family:'Gramatika',-apple-system,sans-serif; font-weight:700; font-size:calc(var(--lk-font)*var(--u)); letter-spacing:0; line-height:.9; position:relative; z-index:2; }
   .lockup-emblem { width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); margin:0 calc(var(--emblem-margin)*var(--u)); transform:translate(calc(var(--emblem-dx)*var(--u)),calc(var(--emblem-dy)*var(--u))); display:inline-flex; align-items:center; justify-content:center; position:relative; z-index:1; flex-shrink:0; }
-  .lockup-emblem video { position:absolute; width:100%; height:100%; object-fit:contain; transition:opacity .4s ease; }
-  .lockup-emblem .emb-light { opacity:1; mix-blend-mode:multiply; }
-  .lockup-emblem .emb-dark  { opacity:0; mix-blend-mode:screen; }
-  :root[data-theme="dark"] .lockup-emblem .emb-light { opacity:0; }
-  :root[data-theme="dark"] .lockup-emblem .emb-dark  { opacity:1; }
+  /* Emblem videos moved to #emblem-overlay (outside .world) for correct mix-blend-mode */
+  #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
+  #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; transition:opacity .4s ease; }
+  #emblem-overlay .emb-light { opacity:1; mix-blend-mode:multiply; }
+  #emblem-overlay .emb-dark  { opacity:0; mix-blend-mode:screen; }
+  :root[data-theme="dark"] #emblem-overlay .emb-light { opacity:0; }
+  :root[data-theme="dark"] #emblem-overlay .emb-dark  { opacity:1; }
   .lockup-tagline { font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); margin-top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); transition:opacity .15s; }
   .edit-active .lockup-tagline { cursor:text; }
 
@@ -317,6 +319,12 @@
 
 <div class="stage" id="stage">
   <div class="world" id="world"></div>
+</div>
+
+<!-- Emblem overlay: lives outside .world so mix-blend-mode reaches body background -->
+<div id="emblem-overlay" aria-hidden="true">
+  <video class="emb-light" src="assets/MaksMartinLogo.mp4"      muted autoplay loop playsinline></video>
+  <video class="emb-dark"  src="assets/MaksMartinLogoBlack.mp4" muted autoplay loop playsinline></video>
 </div>
 
 <canvas id="guides-canvas"></canvas>
@@ -1130,10 +1138,7 @@ function buildBlock(blockEl, bw, bh, blockIdx) {
   lk.innerHTML=`
     <div class="lockup-row">
       <span class="lockup-word">Maks</span>
-      <span class="lockup-emblem" aria-hidden="true">
-          <video class="emb-light" src="assets/MaksMartinLogo.mp4" muted autoplay loop playsinline></video>
-          <video class="emb-dark"  src="assets/MaksMartinLogoBlack.mp4" muted autoplay loop playsinline></video>
-        </span>
+      <span class="lockup-emblem" aria-hidden="true"></span>
       <span class="lockup-word">Martin</span>
     </div>
     <div class="lockup-tagline">Timeless design,<br/>like classical music,<br/>love and money</div>`;
@@ -1312,6 +1317,8 @@ function drawGuides() {
 /* ========================================================
    RENDER LOOP
 ======================================================== */
+const emblemOverlay = document.getElementById('emblem-overlay');
+
 function render() {
   const u=getU();
   parallaxX+=(mouseNX*PARALLAX_AMPLITUDE-parallaxX)*PARALLAX_EASE;
@@ -1325,6 +1332,21 @@ function render() {
   let i=0;
   for (let oy=-1;oy<=1;oy++) for (let ox=-1;ox<=1;ox++)
     BLOCKS[i++].style.transform=`translate3d(${baseBX+ox*BLOCK_W-BLOCK_W/2}px,${baseBY+oy*BLOCK_H-BLOCK_H/2}px,0)`;
+
+  // Sync emblem overlay: read center block's (BLOCKS[4], ox=0 oy=0) .lockup-emblem rect.
+  // BLOCKS[4] always holds the lockup nearest to screen center.
+  // This runs after all transform writes, so one forced layout per frame — acceptable.
+  if (emblemOverlay && BLOCKS[4]) {
+    const anchor = BLOCKS[4].querySelector('.lockup-emblem');
+    if (anchor) {
+      const r = anchor.getBoundingClientRect();
+      emblemOverlay.style.left   = r.left   + 'px';
+      emblemOverlay.style.top    = r.top    + 'px';
+      emblemOverlay.style.width  = r.width  + 'px';
+      emblemOverlay.style.height = r.height + 'px';
+    }
+  }
+
   drawGuides();
   if (editMode && lastSelIdx>=0) positionTileCtx(lastSelIdx);
   requestAnimationFrame(render);
