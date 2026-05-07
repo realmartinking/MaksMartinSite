@@ -48,14 +48,14 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--fg); font-family:'Gramatika',-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif; transition:background-color .4s,color .4s; -webkit-font-smoothing:antialiased; }
 
-  .stage { position:fixed; inset:0; overflow:hidden; cursor:grab; touch-action:none; }
+  .stage { position:fixed; inset:0; overflow:hidden; cursor:grab; touch-action:none; transition:opacity 1000ms cubic-bezier(0.22,1,0.36,1); }
   .stage.dragging { cursor:grabbing; }
   .stage.edit-active { cursor:default; }
 
   .world { position:absolute; left:0; top:0; width:0; height:0; will-change:transform; }
   .block { position:absolute; will-change:transform; }
 
-  .tile { position:absolute; background:var(--tile-bg); overflow:hidden; user-select:none; transition:background-color .4s; }
+  .tile { position:absolute; background:var(--tile-bg); overflow:hidden; user-select:none; opacity:0; transform:translateY(8px); transition:opacity 700ms cubic-bezier(0.22,1,0.36,1),transform 700ms cubic-bezier(0.22,1,0.36,1); }
   .tile video, .tile img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
 
   /* ── Tile caption (external, always visible) ── */
@@ -200,7 +200,7 @@
   #guides-canvas { position:fixed; inset:0; pointer-events:none; z-index:800; }
 
   /* ── Lockup ── */
-  .lockup { position:absolute; background:transparent; color:var(--fg); display:flex; flex-direction:column; align-items:flex-start; justify-content:center; user-select:none; pointer-events:none; transition:color .4s; }
+  .lockup { position:absolute; background:transparent; color:var(--fg); display:flex; flex-direction:column; align-items:flex-start; justify-content:center; user-select:none; pointer-events:none; opacity:0; transform:scale(0.96); filter:blur(6px); transition:opacity 900ms cubic-bezier(0.22,1,0.36,1) 200ms,transform 900ms cubic-bezier(0.22,1,0.36,1) 200ms,filter 700ms cubic-bezier(0.22,1,0.36,1) 200ms; }
   .lockup-row { display:flex; align-items:flex-end; }
   .lockup-word { font-family:'Gramatika',-apple-system,sans-serif; font-weight:700; font-size:calc(var(--lk-font)*var(--u)); letter-spacing:0; line-height:.9; position:relative; z-index:2; }
   .lockup-emblem { width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); margin:0 calc(var(--emblem-margin)*var(--u)); transform:translate(calc(var(--emblem-dx)*var(--u)),calc(var(--emblem-dy)*var(--u))); display:inline-flex; align-items:center; justify-content:center; position:relative; z-index:1; flex-shrink:0; }
@@ -211,11 +211,11 @@
   #emblem-overlay .emb-dark  { opacity:0; filter:url(#kill-black-bg); }
   :root[data-theme="dark"] #emblem-overlay .emb-light { opacity:0; }
   :root[data-theme="dark"] #emblem-overlay .emb-dark  { opacity:1; }
-  .lockup-tagline { font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); margin-top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); transition:opacity .15s; }
+  .lockup-tagline { font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); margin-top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); opacity:0; transition:opacity 600ms cubic-bezier(0.22,1,0.36,1) 900ms; }
   .edit-active .lockup-tagline { cursor:text; }
 
   /* ── Chrome ── */
-  .chrome { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  .chrome { position:fixed; inset:0; pointer-events:none; z-index:10; opacity:0; transition:opacity 600ms cubic-bezier(0.22,1,0.36,1) 1100ms; }
   .chrome > * { pointer-events:auto; }
   .nav-top { position:absolute; top:calc(var(--nav-top)*var(--u)); left:50%; transform:translateX(-50%); display:flex; gap:calc(36*var(--u)); font-size:calc(var(--nav-font)*var(--u)); font-weight:600; }
   .nav-top a { color:var(--fg); text-decoration:none; transition:opacity .2s,color .4s; }
@@ -277,43 +277,75 @@
   /* ── Preloader ── */
   #preloader {
     position:fixed; inset:0; z-index:99999;
-    background:var(--bg); color:var(--fg);
+    background:var(--bg);
     display:flex; align-items:center; justify-content:center;
-    transition:opacity .6s ease;
+    transition:opacity 700ms cubic-bezier(0.22,1,0.36,1);
     font-family:'Gramatika',-apple-system,sans-serif;
   }
-  #preloader.prl-out { opacity:0; pointer-events:none; }
-  #prl-inner { display:flex; align-items:center; gap:calc(40*var(--u)); }
-  #prl-emblem {
+  #preloader.hidden { opacity:0; pointer-events:none; }
+  [data-theme="dark"] #preloader { background:var(--bg,#000); }
+
+  /* Emblem wrap — same size as lockup emblem */
+  .prl-emblem-wrap {
     position:relative;
-    width:calc(133*var(--u));
-    height:calc(160*var(--u));
-    flex-shrink:0;
+    width:calc(var(--emblem-w)*var(--u));
+    height:calc(var(--emblem-h)*var(--u));
   }
-  #prl-emblem video {
-    position:absolute; width:100%; height:100%; object-fit:contain;
-    transition:opacity .4s ease;
+  .prl-emblem-video {
+    position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
   }
-  #prl-emblem .emb-light { opacity:1; }
-  #prl-emblem .emb-dark  { opacity:0; }
-  :root[data-theme="dark"] #prl-emblem .emb-light { opacity:0; }
-  :root[data-theme="dark"] #prl-emblem .emb-dark  { opacity:1; }
-  #prl-counter {
-    font-weight:700; font-size:calc(90*var(--u));
-    line-height:1; letter-spacing:-.03em;
-    min-width:4.2ch; font-variant-numeric:tabular-nums;
+  .prl-emblem-video.emb-light { filter:url(#kill-white-bg); }
+  .prl-emblem-video.emb-dark  { filter:url(#kill-black-bg); display:none; }
+  [data-theme="dark"] .prl-emblem-video.emb-light { display:none; }
+  [data-theme="dark"] .prl-emblem-video.emb-dark  { display:block; }
+
+  /* Counter badge — right of emblem */
+  .prl-counter {
+    position:absolute;
+    left:calc(100% + 24px);
+    top:28%;
+    font-size:calc(40*var(--u));
+    font-weight:700;
+    color:var(--fg,#000);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-0.02em;
+    white-space:nowrap;
+    line-height:1;
+    opacity:0;
+    animation:prl-counter-in 600ms cubic-bezier(0.22,1,0.36,1) 200ms forwards;
   }
+  @keyframes prl-counter-in { to { opacity:1; } }
+  @media (max-width:768px) {
+    .prl-counter {
+      font-size:calc(36*100vw/600);
+      left:calc(100% + 12px);
+    }
+  }
+
+  /* ── Reveal ── */
+  body.loading .stage,
+  body.loading .chrome { opacity:0; }
+
+  body.reveal .stage       { opacity:1; }
+  body.reveal .lockup      { opacity:1; transform:scale(1); filter:blur(0); }
+  body.reveal .tile        { opacity:1; transform:translateY(0); }
+  body.reveal .chrome      { opacity:1; }
+  body.reveal .lockup-tagline { opacity:1; }
+
+  body.reveal-done .stage,
+  body.reveal-done .lockup,
+  body.reveal-done .tile,
+  body.reveal-done .chrome,
+  body.reveal-done .lockup-tagline { transition:none; }
 </style>
 </head>
-<body>
+<body class="loading">
 
 <div id="preloader">
-  <div id="prl-inner">
-    <div id="prl-emblem">
-      <video class="emb-light" muted playsinline preload="metadata"></video>
-      <video class="emb-dark"  muted playsinline preload="metadata"></video>
-    </div>
-    <div id="prl-counter">0%</div>
+  <div class="prl-emblem-wrap">
+    <video class="prl-emblem-video emb-light" src="assets/MaksMartinLogo.mp4"      autoplay muted loop playsinline preload="auto"></video>
+    <video class="prl-emblem-video emb-dark"  src="assets/MaksMartinLogoBlack.mp4" autoplay muted loop playsinline preload="auto"></video>
+    <div class="prl-counter">0%</div>
   </div>
 </div>
 
@@ -1821,7 +1853,7 @@ world.addEventListener('pointerenter', e=>{
 ======================================================== */
 (function(){
   const prl     = document.getElementById('preloader');
-  const counter = document.getElementById('prl-counter');
+  const counter = document.querySelector('.prl-counter');
   if (!prl || !counter) return;
 
   const START  = Date.now();
@@ -1829,15 +1861,6 @@ world.addEventListener('pointerenter', e=>{
   let hidden   = false;
   let display  = 0;
   let target   = 0;
-
-  // ── Emblem: show first frame immediately ──────────────
-  prl.querySelectorAll('video').forEach(v => {
-    v.src = v.classList.contains('emb-dark')
-      ? 'assets/MaksMartinLogoBlack.mp4'
-      : 'assets/MaksMartinLogo.mp4';
-    v.addEventListener('loadedmetadata', () => { v.currentTime = 0; v.pause(); }, {once:true});
-    v.load();
-  });
 
   // ── rAF progress display ───────────────────────────────
   function tick() {
@@ -1848,14 +1871,46 @@ world.addEventListener('pointerenter', e=>{
   }
   requestAnimationFrame(tick);
 
-  // ── Hide (once, guarded) ───────────────────────────────
-  function hidePreloader() {
+  // ── Staggered tile delays from screen center ──────────
+  function calculateTileDelays() {
+    const tiles = document.querySelectorAll('.tile');
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const maxDist = Math.hypot(window.innerWidth, window.innerHeight) / 2;
+    tiles.forEach(tile => {
+      const r = tile.getBoundingClientRect();
+      if (r.right < 0 || r.left > window.innerWidth ||
+          r.bottom < 0 || r.top > window.innerHeight) {
+        tile.style.transitionDelay = '0ms';
+        return;
+      }
+      const tx = r.left + r.width / 2;
+      const ty = r.top + r.height / 2;
+      const distance = Math.hypot(tx - cx, ty - cy);
+      const delay = 300 + (distance / maxDist) * 400;
+      tile.style.transitionDelay = `${Math.round(delay)}ms`;
+    });
+  }
+
+  // ── Orchestrated reveal ────────────────────────────────
+  async function finishPreloader() {
     if (hidden) return;
     hidden = true;
     target = 100;
     counter.textContent = '100%';
-    prl.classList.add('prl-out');
-    setTimeout(() => { try { prl.remove(); } catch(_){} }, 650);
+    await new Promise(r => setTimeout(r, 200));
+    calculateTileDelays();
+    document.body.classList.add('reveal');
+    document.body.classList.remove('loading');
+    await new Promise(r => setTimeout(r, 100));
+    prl.classList.add('hidden');
+    setTimeout(() => { try { prl.remove(); } catch(_){} }, 800);
+    setTimeout(() => {
+      document.body.classList.add('reveal-done');
+      document.querySelectorAll('.tile video').forEach(v => {
+        if (v.readyState >= 2) v.play().catch(()=>{});
+      });
+    }, 2000);
   }
 
   // ── settle-once wrapper: resolves on load/error/timeout ─
@@ -1926,9 +1981,9 @@ world.addEventListener('pointerenter', e=>{
     const elapsed = Date.now() - START;
     if (elapsed < MIN_MS) await new Promise(r => setTimeout(r, MIN_MS - elapsed));
 
-    hidePreloader();
+    await finishPreloader();
 
-    // After preloader gone: play() tier1 videos (IO may not re-fire)
+    // Play tier1 videos after reveal kicks off (IO may not re-fire)
     setTimeout(() => tier1.forEach(v => v.play().catch(()=>{})), 100);
   })();
 })();
