@@ -994,8 +994,12 @@ function setTileMedia(tile, src, type) {
   tile.querySelectorAll('video,img').forEach(el=>el.remove());
   if (type==='video') {
     const v=document.createElement('video');
-    v.src=src; v.muted=true; v.autoplay=true; v.loop=true; v.setAttribute('playsinline','');
+    v.src=src; v.muted=true; v.autoplay=true; v.loop=true;
+    v.setAttribute('muted','');               // Safari requires attribute, not just property
+    v.setAttribute('playsinline','');
+    v.setAttribute('webkit-playsinline','');  // legacy iOS Safari
     tile.insertBefore(v, tile.firstChild);
+    tileVideoObserver.observe(v);
   } else {
     const img=document.createElement('img');
     img.src=src; img.loading='lazy';
@@ -1362,8 +1366,25 @@ async function init() {
 
   // Always start centered on lockup — hard reset before first render
   camX=0; camY=0; targetX=0; targetY=0; parallaxX=0; parallaxY=0;
+
+  // Observe all tile videos for play/pause by visibility
+  document.querySelectorAll('.tile video').forEach(v => tileVideoObserver.observe(v));
+
   requestAnimationFrame(render);
 }
+
+// IntersectionObserver: play tile videos only when visible — fixes Safari autoplay limits
+const tileVideoObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    const v = e.target;
+    if (e.isIntersecting) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  });
+}, { rootMargin: '200px' });
+
 init();
 
 /* ========================================================
