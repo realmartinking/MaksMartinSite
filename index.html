@@ -1751,8 +1751,9 @@ world.addEventListener('pointerenter', e=>{
   const counter = document.getElementById('prl-counter');
   if (!prl || !counter) return;
 
-  const START = Date.now();
+  const START  = Date.now();
   const MIN_MS = 800;
+  let hidden   = false;
 
   // ── Static first-frame emblem (no animation) ──────────
   prl.querySelectorAll('video').forEach(v => {
@@ -1766,68 +1767,92 @@ world.addEventListener('pointerenter', e=>{
   // ── Progress state ─────────────────────────────────────
   let loaded  = 0;
   let total   = 0;
-  let display = 0;   // lerp-smoothed value
-  let target  = 0;   // raw loaded / total * 100
-  let rafId;
-
-  function markOne() {
-    loaded++;
-    target = Math.round(loaded / total * 100);
-  }
+  let display = 0;
+  let target  = 0;
 
   // ── rAF counter loop ───────────────────────────────────
   function tick() {
+    if (hidden) return;
     display += (target - display) * 0.08;
-    const shown = Math.min(Math.floor(display), 100);
-    counter.textContent = shown + '%';
+    counter.textContent = Math.min(Math.floor(display), 100) + '%';
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 
-    if (display >= 99.5 && target >= 100) {
-      counter.textContent = '100%';
-      // Wait min time, then fade
+  // ── Hide preloader (called once, guarded) ──────────────
+  function hidePreloader() {
+    if (hidden) return;
+    hidden = true;
+    counter.textContent = '100%';
+    prl.classList.add('prl-out');
+    setTimeout(() => { try { prl.remove(); } catch(_){} }, 650);
+  }
+
+  // ── Mark one asset as done, trigger hide when all done ─
+  function markOne() {
+    if (hidden) return;
+    loaded = Math.min(loaded + 1, total);
+    target = Math.round(loaded / total * 100);
+    if (loaded >= total) {
       const elapsed   = Date.now() - START;
       const remaining = Math.max(0, MIN_MS - elapsed);
-      setTimeout(() => {
-        prl.classList.add('prl-out');
-        setTimeout(() => prl.remove(), 650);
-      }, remaining + 200);
-      return; // stop rAF
+      setTimeout(hidePreloader, remaining + 200);
     }
-    rafId = requestAnimationFrame(tick);
   }
-  rafId = requestAnimationFrame(tick);
+
+  // ── Per-asset promise: always resolves (success/error/timeout) ─
+  function makeAsset(executor) {
+    return new Promise(resolve => {
+      let done = false;
+      const settle = (warn) => {
+        if (done) return;
+        done = true;
+        if (warn) console.warn('[preloader]', warn);
+        resolve();
+      };
+      executor(settle);
+      setTimeout(() => settle('asset timeout'), 8000); // hard per-asset limit
+    });
+  }
 
   // ── Asset list ─────────────────────────────────────────
-  const promises = [];
+  const assets = [];
 
-  // Fonts
-  promises.push(
-    document.fonts.ready
-      .then(markOne).catch(markOne)
-  );
+  // Font
+  assets.push(makeAsset(settle => {
+    document.fonts.ready.then(() => settle(), () => settle('fonts failed'));
+  }));
 
-  // All project media
+  // Project media — video: loadedmetadata (fast), image: onload
   for (const p of PROJECTS) {
-    promises.push(new Promise(resolve => {
-      function done() { markOne(); resolve(); }
+    assets.push(makeAsset(settle => {
       if (p.type === 'video') {
         const v = document.createElement('video');
-        v.muted = true; v.preload = 'auto'; v.src = p.src;
-        v.addEventListener('loadeddata', done, {once:true});
-        v.addEventListener('error', () => { console.error('[preloader] failed:', p.src); done(); }, {once:true});
+        v.muted = true; v.preload = 'metadata'; v.src = p.src;
+        v.addEventListener('loadedmetadata', () => settle(), {once:true});
+        v.addEventListener('error', () => settle('video failed: ' + p.src), {once:true});
       } else {
         const img = new Image();
-        img.onload  = done;
-        img.onerror = () => { console.error('[preloader] failed:', p.src); done(); };
+        img.onload  = () => settle();
+        img.onerror = () => settle('image failed: ' + p.src);
         img.src = p.src;
       }
     }));
   }
 
-  total = promises.length;
-  // Initial target in case fonts resolve instantly
-  target = Math.round(loaded / total * 100);
+  total = assets.length;
+  if (total === 0) { hidePreloader(); return; }
 
-  Promise.all(promises); // all markOne() calls happen as each resolves
+  // Wire each resolved asset to markOne
+  assets.forEach(p => p.then(markOne));
+
+  // Global hard timeout — 12 seconds max, no matter what
+  setTimeout(() => {
+    if (!hidden) {
+      console.warn('[preloader] global timeout (12s), force hiding');
+      hidePreloader();
+    }
+  }, 12000);
 })();
 </script>
 </body>
