@@ -323,6 +323,16 @@
     .prl-counter { left:calc(100% + 12px); }
   }
 
+  /* ── Lockup Editor ── */
+  .lockup-text-block { position:absolute; font-family:'Gramatika',-apple-system,sans-serif; font-weight:700; color:var(--fg); pointer-events:none; user-select:none; white-space:pre-wrap; line-height:1.1; }
+  body.lockup-edit .lockup-text-block { pointer-events:auto; cursor:move; outline:1px dashed rgba(255,80,80,.45); outline-offset:3px; }
+  body.lockup-edit .lockup-tagline { pointer-events:auto; cursor:move; outline:1px dashed rgba(80,80,255,.45); outline-offset:3px; }
+  .lockup-text-block.lk-sel { outline:1.5px solid rgba(255,50,50,.9) !important; box-shadow:0 0 0 3px rgba(255,50,50,.12); }
+  .lockup-tagline.lk-sel { outline:1.5px solid rgba(50,50,255,.9) !important; box-shadow:0 0 0 3px rgba(50,50,255,.12); }
+  body.lockup-edit .lockup-emblem::after { content:'⊘'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; opacity:.3; pointer-events:none; }
+  #dbg-sel-block { padding:4px 0 2px; border-top:1px dashed #e0e0e0; margin-top:2px; }
+  :root[data-theme="dark"] #dbg-sel-block { border-color:#3a3a3a; }
+
   /* ── Reveal ── */
   body.loading .stage,
   body.loading .chrome { opacity:0; }
@@ -434,6 +444,16 @@
     <div class="dbg-row"><label>Отступ сверху</label><input type="range" id="s-tagline-mt" min="0" max="150" step="1"><span class="dbg-val" id="v-tagline-mt"></span></div>
     <div class="dbg-row"><label>Сдвиг X</label><input type="range" id="s-tagline-dx" min="-200" max="200" step="1"><span class="dbg-val" id="v-tagline-dx"></span></div>
     <div class="dbg-row"><label>Выравнивание</label><span style="display:flex;gap:8px;font-size:10px;color:#555"><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="left" style="margin:0"> L</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="center" style="margin:0"> C</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="right" style="margin:0"> R</label></span></div>
+
+    <div class="dbg-section" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Текстовые блоки</span>
+      <button id="dbg-lockup-edit-btn" style="font-size:9px;padding:1px 6px;border:1px solid #ddd;border-radius:3px;background:#fafafa;cursor:pointer;font-family:inherit;color:#555;text-transform:none;letter-spacing:0;font-weight:600">◻ Edit</button>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+      <button id="dbg-add-text-block" style="flex:1;padding:3px 0;border:1px solid #4a8;border-radius:4px;background:#f0fff4;font-size:10px;cursor:pointer;font-family:inherit;color:#338">+ Текстовый блок</button>
+      <button id="dbg-reset-lockup" style="flex:1;padding:3px 0;border:1px solid #ddd;border-radius:4px;background:#fafafa;font-size:10px;cursor:pointer;font-family:inherit;color:#666">↺ Reset</button>
+    </div>
+    <div id="dbg-sel-block" style="display:none"></div>
 
     <div class="dbg-section">Плитки</div>
     <div class="dbg-row"><label>Caption size (default)</label><input type="range" id="s-caption-default" min="8" max="32" step="0.5"><span class="dbg-val" id="v-caption-default"></span></div>
@@ -1192,6 +1212,7 @@ function buildBlock(blockEl, bw, bh, blockIdx) {
       <span class="lockup-word">Martin</span>
     </div>
     <div class="lockup-tagline">Timeless design,<br/>like classical music,<br/>love and money</div>`;
+  renderCustomBlocks(lk);
   blockEl.appendChild(lk);
   tileEls[blockIdx]    = [];
   captionEls[blockIdx] = [];
@@ -1741,6 +1762,7 @@ function buildExportData() {
     navLinks: {...navLinks},
     taglineText: localStorage.getItem('taglineText')||'',
     taglineAlign: localStorage.getItem('mm-tagline-align')||'left',
+    customBlocks: [...customBlocks],
   };
 }
 function exportFullState() {
@@ -1767,6 +1789,7 @@ function importFullState(jsonStr) {
     if (data.blockPad!=null)            localStorage.setItem('blockPad', data.blockPad);
     if (data.navLinks)     localStorage.setItem('navLinks', JSON.stringify(data.navLinks));
     if (data.taglineText)  localStorage.setItem('taglineText', data.taglineText);
+    if (data.customBlocks) localStorage.setItem('mm-lockup-custom', JSON.stringify(data.customBlocks));
     location.reload();
   } catch(e) { alert('Ошибка импорта: '+e.message); console.error('[import]',e); }
 }
@@ -1887,6 +1910,245 @@ world.addEventListener('pointerenter', e=>{
   const tl=e.target.closest('.lockup-tagline');
   if (tl) tl.style.cursor='text';
 },{capture:true});
+
+/* ========================================================
+   LOCKUP EDITOR — custom text blocks
+======================================================== */
+let customBlocks = [];
+(()=>{
+  try { customBlocks = JSON.parse(localStorage.getItem('mm-lockup-custom') || '[]'); } catch(_) {}
+})();
+function saveCustomBlocks() { localStorage.setItem('mm-lockup-custom', JSON.stringify(customBlocks)); }
+
+function renderCustomBlocks(lockupEl) {
+  lockupEl.querySelectorAll('.lockup-text-block').forEach(el => el.remove());
+  for (const blk of customBlocks) {
+    const el = document.createElement('div');
+    el.className = 'lockup-text-block';
+    el.dataset.lkId = blk.id;
+    el.style.left = `calc(${blk.x} * var(--u))`;
+    el.style.top  = `calc(${blk.y} * var(--u))`;
+    el.style.fontSize = `calc(${blk.fontSize} * var(--u))`;
+    el.textContent = blk.text;
+    lockupEl.appendChild(el);
+  }
+}
+
+let lockupEditMode = false;
+let selLkId = null;
+
+function setLockupEditMode(on) {
+  lockupEditMode = on;
+  document.body.classList.toggle('lockup-edit', on);
+  const btn = document.getElementById('dbg-lockup-edit-btn');
+  if (btn) { btn.textContent = on ? '■ Done' : '◻ Edit'; btn.style.color = on ? '#cc4444' : '#555'; }
+  if (!on) deselectLkBlock();
+}
+
+function deselectLkBlock() {
+  selLkId = null;
+  document.querySelectorAll('.lk-sel').forEach(el => el.classList.remove('lk-sel'));
+  const panel = document.getElementById('dbg-sel-block');
+  if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+}
+
+function selectLkBlock(id) {
+  deselectLkBlock();
+  selLkId = id;
+  const sel = id === 'tagline' ? '.lockup-tagline' : `.lockup-text-block[data-lk-id="${id}"]`;
+  document.querySelectorAll(sel).forEach(el => el.classList.add('lk-sel'));
+  renderLkSelPanel();
+}
+
+function renderLkSelPanel() {
+  const panel = document.getElementById('dbg-sel-block');
+  if (!panel) return;
+  panel.innerHTML = '';
+  panel.style.display = 'block';
+
+  if (selLkId === 'tagline') {
+    panel.innerHTML = `<div style="font-size:10px;color:#888;padding:2px 0">Слоган — настрой в разделе «Слоган» выше</div>`;
+    return;
+  }
+
+  const blk = customBlocks.find(b => b.id === selLkId);
+  if (!blk) return;
+
+  panel.innerHTML = `
+    <div class="dbg-row" style="align-items:flex-start;margin-bottom:4px">
+      <label style="flex:0 0 50px;padding-top:2px">Текст</label>
+      <textarea id="lk-sel-text" rows="2" style="flex:1;font-size:10px;padding:2px 4px;border:1px solid #ddd;border-radius:3px;background:#fafafa;color:#333;font-family:inherit;resize:vertical;min-height:32px;box-sizing:border-box">${blk.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+    </div>
+    <div class="dbg-row">
+      <label style="flex:0 0 50px">Размер</label>
+      <input type="range" id="lk-sel-size" min="8" max="120" step="0.5" value="${blk.fontSize}" style="flex:1">
+      <span class="dbg-val" id="lk-sel-size-val">${blk.fontSize}</span>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:4px">
+      <button id="lk-sel-del" style="flex:1;padding:3px 0;border:1px solid #f0a0a0;border-radius:4px;background:#fff8f8;font-size:10px;cursor:pointer;font-family:inherit;color:#cc4444">🗑 Удалить</button>
+    </div>`;
+
+  document.getElementById('lk-sel-text').addEventListener('input', e => {
+    blk.text = e.target.value;
+    saveCustomBlocks();
+    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.textContent = blk.text);
+  });
+
+  const sizeInp = document.getElementById('lk-sel-size');
+  const sizeVal = document.getElementById('lk-sel-size-val');
+  sizeInp.addEventListener('input', () => {
+    blk.fontSize = parseFloat(sizeInp.value);
+    sizeVal.textContent = blk.fontSize;
+    saveCustomBlocks();
+    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => {
+      el.style.fontSize = `calc(${blk.fontSize} * var(--u))`;
+    });
+  });
+
+  document.getElementById('lk-sel-del').addEventListener('click', () => {
+    customBlocks = customBlocks.filter(b => b.id !== blk.id);
+    saveCustomBlocks();
+    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.remove());
+    deselectLkBlock();
+  });
+}
+
+function addCustomBlock() {
+  const blk = { id: 'cb-' + Date.now(), text: 'Новый текст', x: 0, y: 320, fontSize: 20 };
+  customBlocks.push(blk);
+  saveCustomBlocks();
+  document.querySelectorAll('.lockup').forEach(lk => renderCustomBlocks(lk));
+  if (lockupEditMode) selectLkBlock(blk.id);
+}
+
+// ── Drag system ────────────────────────────────────────────────────────────
+stage.addEventListener('pointerdown', e => {
+  if (!lockupEditMode) return;
+  const textBlock = e.target.closest('.lockup-text-block');
+  const taglineEl = e.target.closest('.lockup-tagline');
+  const targetEl  = textBlock || taglineEl;
+  if (!targetEl) return; // propagate normally (canvas drag still works)
+  e.stopImmediatePropagation();
+  stage.setPointerCapture(e.pointerId);
+
+  const id = textBlock ? textBlock.dataset.lkId : 'tagline';
+  selectLkBlock(id);
+
+  let dragState;
+  if (textBlock) {
+    const blk = customBlocks.find(b => b.id === id);
+    if (!blk) return;
+    dragState = { type:'custom', blk, startX:e.clientX, startY:e.clientY, origX:blk.x, origY:blk.y };
+  } else {
+    dragState = { type:'tagline', startX:e.clientX, startY:e.clientY,
+      origDx: S['tagline-dx']||0, origMt: S['tagline-mt']||0 };
+  }
+
+  function onMove(ev) {
+    const u = getU();
+    const dx = (ev.clientX - dragState.startX) / u;
+    const dy = (ev.clientY - dragState.startY) / u;
+    if (dragState.type === 'custom') {
+      dragState.blk.x = Math.round(dragState.origX + dx);
+      dragState.blk.y = Math.round(dragState.origY + dy);
+      document.querySelectorAll(`.lockup-text-block[data-lk-id="${dragState.blk.id}"]`).forEach(el => {
+        el.style.left = `calc(${dragState.blk.x} * var(--u))`;
+        el.style.top  = `calc(${dragState.blk.y} * var(--u))`;
+      });
+    } else {
+      const newDx = Math.round(dragState.origDx + dx);
+      const newMt = Math.round(Math.max(0, dragState.origMt + dy));
+      S['tagline-dx'] = newDx; S['tagline-mt'] = newMt;
+      root.style.setProperty('--tagline-dx', newDx);
+      root.style.setProperty('--tagline-mt', newMt);
+      const dxI=document.getElementById('s-tagline-dx'), dxV=document.getElementById('v-tagline-dx');
+      const mtI=document.getElementById('s-tagline-mt'), mtV=document.getElementById('v-tagline-mt');
+      if (dxI) { dxI.value=newDx; dxV.textContent=newDx; }
+      if (mtI) { mtI.value=newMt; mtV.textContent=newMt; }
+    }
+  }
+
+  function onUp(ev) {
+    if (dragState.type === 'custom') saveCustomBlocks();
+    else { localStorage.setItem('dbg', JSON.stringify(S)); }
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup',   onUp);
+    try { stage.releasePointerCapture(ev.pointerId); } catch(_) {}
+  }
+
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup',   onUp);
+}, {capture: true});
+
+// Deselect on click outside a text block (bubble phase, fires only if capture didn't stopImmediatePropagation)
+stage.addEventListener('pointerdown', e => {
+  if (!lockupEditMode || !selLkId) return;
+  if (!e.target.closest('.lockup-text-block') && !e.target.closest('.lockup-tagline')) deselectLkBlock();
+});
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (!lockupEditMode || !selLkId) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+  if (e.key === 'Escape') { deselectLkBlock(); return; }
+
+  const isArrow = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key);
+  const isDelete = (e.key === 'Delete' || e.key === 'Backspace') && e.shiftKey;
+  if (!isArrow && !isDelete) return;
+
+  e.preventDefault();
+  const step = e.shiftKey && isArrow ? 10 : 1;
+
+  if (selLkId === 'tagline') {
+    if (!isArrow) return;
+    if (e.key==='ArrowLeft')  S['tagline-dx'] -= step;
+    if (e.key==='ArrowRight') S['tagline-dx'] += step;
+    if (e.key==='ArrowUp')    S['tagline-mt'] = Math.max(0, S['tagline-mt'] - step);
+    if (e.key==='ArrowDown')  S['tagline-mt'] += step;
+    applyAll();
+    const dxI=document.getElementById('s-tagline-dx'), dxV=document.getElementById('v-tagline-dx');
+    const mtI=document.getElementById('s-tagline-mt'), mtV=document.getElementById('v-tagline-mt');
+    if (dxI) { dxI.value=S['tagline-dx']; dxV.textContent=S['tagline-dx']; }
+    if (mtI) { mtI.value=S['tagline-mt']; mtV.textContent=S['tagline-mt']; }
+    return;
+  }
+
+  const blk = customBlocks.find(b => b.id === selLkId);
+  if (!blk) return;
+
+  if (isArrow) {
+    if (e.key==='ArrowLeft')  blk.x -= step;
+    if (e.key==='ArrowRight') blk.x += step;
+    if (e.key==='ArrowUp')    blk.y -= step;
+    if (e.key==='ArrowDown')  blk.y += step;
+    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => {
+      el.style.left = `calc(${blk.x} * var(--u))`;
+      el.style.top  = `calc(${blk.y} * var(--u))`;
+    });
+    saveCustomBlocks();
+  } else {
+    // Shift+Delete: remove
+    customBlocks = customBlocks.filter(b => b.id !== blk.id);
+    saveCustomBlocks();
+    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.remove());
+    deselectLkBlock();
+  }
+});
+
+// ── Wire debug buttons ─────────────────────────────────────────────────────
+document.getElementById('dbg-lockup-edit-btn').addEventListener('click', () => setLockupEditMode(!lockupEditMode));
+document.getElementById('dbg-add-text-block').addEventListener('click', () => {
+  if (!lockupEditMode) setLockupEditMode(true);
+  addCustomBlock();
+});
+document.getElementById('dbg-reset-lockup').addEventListener('click', () => {
+  if (!confirm('Удалить все текстовые блоки лок-апа?')) return;
+  customBlocks = [];
+  saveCustomBlocks();
+  document.querySelectorAll('.lockup-text-block').forEach(el => el.remove());
+  deselectLkBlock();
+});
 
 /* ========================================================
    PRELOADER
