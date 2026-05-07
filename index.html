@@ -52,7 +52,7 @@
     --tagline-align: left; --lockup-offset-x: 0; --lockup-offset-y: 0;
   }
   :root { --emb-filter: url(#kill-white-bg); }
-  :root[data-theme="dark"] { --bg: #000000; --fg: #ffffff; --tile-bg: #1a1a1a; --emb-filter: url(#kill-white-bg) invert(1); }
+  :root[data-theme="dark"] { --bg: #000000; --fg: #ffffff; --tile-bg: #1a1a1a; --emb-filter: url(#kill-black-bg); }
   @media (max-width: 768px) { :root { --design-w: 600; } }
 
   @font-face { font-family:'Gramatika'; src:url('fonts/GramatikaRegular.woff') format('woff'),url('fonts/Gramatika Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
@@ -1543,10 +1543,22 @@ document.addEventListener('keydown', e=>{
 ======================================================== */
 const root=document.documentElement;
 const sw=document.getElementById('themeSwitch');
+function syncEmblemToTheme(t) {
+  const src = t === 'dark' ? 'assets/MaksMartinLogoBlack.mp4' : 'assets/MaksMartinLogo.mp4';
+  const filename = src.split('/').pop();
+  [document.querySelector('#emblem-overlay video'), document.querySelector('.prl-emblem-video')]
+    .forEach(v => {
+      if (!v) return;
+      if (!v.currentSrc.endsWith(filename)) {
+        v.src = src; v.load(); v.play().catch(()=>{});
+      }
+    });
+}
 function applyTheme(t) {
   if (t==='dark') { root.setAttribute('data-theme','dark'); sw.textContent='light'; }
   else            { root.removeAttribute('data-theme');      sw.textContent='dark';  }
   localStorage.setItem('theme', t);
+  syncEmblemToTheme(t);
 }
 const DEBUG_TOKEN = 'maks2026';
 const _DBG_STORE  = 'mm-debug-token';
