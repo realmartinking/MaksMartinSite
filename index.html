@@ -70,7 +70,7 @@
   .world { position:absolute; left:0; top:0; width:0; height:0; will-change:transform; }
   .block { position:absolute; will-change:transform; }
 
-  .tile { position:absolute; background:var(--tile-bg); overflow:hidden; user-select:none; opacity:0; transform:translateY(6px); transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1),transform 1400ms cubic-bezier(0.16,1,0.3,1); }
+  .tile { position:absolute; background:var(--tile-bg); overflow:hidden; user-select:none; opacity:0; transform:translateY(8px); transition:opacity 800ms cubic-bezier(0.22,1,0.36,1),transform 800ms cubic-bezier(0.22,1,0.36,1); }
   .tile video, .tile img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
 
   /* ── Tile caption (external, always visible) ── */
@@ -215,7 +215,7 @@
   #guides-canvas { position:fixed; inset:0; pointer-events:none; z-index:800; }
 
   /* ── Lockup ── */
-  .lockup { position:absolute; background:transparent; color:var(--fg); width:0; height:0; overflow:visible; user-select:none; pointer-events:none; opacity:0; filter:blur(4px); transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1),filter 1400ms cubic-bezier(0.16,1,0.3,1); }
+  .lockup { position:absolute; background:transparent; color:var(--fg); width:0; height:0; overflow:visible; user-select:none; pointer-events:none; }
   .lockup-emblem { position:absolute; left:calc(var(--emblem-dx)*var(--u)); top:calc(var(--emblem-dy)*var(--u)); width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); transform:translate(-50%,-50%); z-index:1; pointer-events:none; }
   /* Emblem overlay: synced via render loop, filter via --emb-filter */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
@@ -228,7 +228,7 @@
   .edit-active .lockup-tagline { cursor:text; }
 
   /* ── Chrome ── */
-  .chrome { position:fixed; inset:0; pointer-events:none; z-index:10; opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 200ms; }
+  .chrome { position:fixed; inset:0; pointer-events:none; z-index:10; opacity:0; }
   .chrome > * { pointer-events:auto; }
   .nav-top { position:absolute; top:calc(var(--nav-top)*var(--u)); left:50%; transform:translateX(-50%); display:flex; gap:calc(36*var(--u)); font-size:calc(var(--nav-font)*var(--u)); font-weight:600; }
   .nav-top a { color:var(--fg); text-decoration:none; transition:opacity .2s,color .4s; }
@@ -346,20 +346,50 @@
   :root[data-theme="dark"] #dbg-sel-block { border-color:#3a3a3a; }
 
   /* ── Reveal ── */
-  body.loading .stage,
+  body.loading .stage { opacity:0; }
   body.loading .chrome { opacity:0; }
 
-  body.reveal .stage          { opacity:1; }
-  body.reveal .lockup         { opacity:1; filter:blur(0); }
-  body.reveal .tile           { opacity:1; transform:translateY(0); }
-  body.reveal .chrome         { opacity:1; }
-  body.reveal .lockup-tagline { opacity:1; }
+  /* System name blocks — strong blur+scale effect */
+  body.loading .lockup-text-block.system {
+    opacity:0; transform:scale(0.85); filter:blur(20px);
+    transition:opacity 2200ms cubic-bezier(0.16,1,0.3,1),
+               transform 2200ms cubic-bezier(0.16,1,0.3,1),
+               filter 1800ms cubic-bezier(0.16,1,0.3,1);
+  }
+  body.reveal .lockup-text-block.system { opacity:1; transform:scale(1); filter:blur(0); }
+
+  /* Tagline — gentle, delayed */
+  body.loading .lockup-tagline {
+    opacity:0; transform:translateY(8px); filter:blur(2px);
+    transition:opacity 1000ms cubic-bezier(0.22,1,0.36,1) 600ms,
+               transform 1000ms cubic-bezier(0.22,1,0.36,1) 600ms,
+               filter 800ms cubic-bezier(0.22,1,0.36,1) 600ms;
+  }
+  body.reveal .lockup-tagline { opacity:1; transform:translateY(0); filter:blur(0); }
+
+  /* Custom text blocks — gentle, delayed */
+  body.loading .lockup-text-block:not(.system) {
+    opacity:0; transform:translateY(6px);
+    transition:opacity 900ms cubic-bezier(0.22,1,0.36,1) 500ms,
+               transform 900ms cubic-bezier(0.22,1,0.36,1) 500ms;
+  }
+  body.reveal .lockup-text-block:not(.system) { opacity:1; transform:translateY(0); }
+
+  /* Tiles */
+  body.reveal .tile { opacity:1; transform:translateY(0); }
+
+  /* Chrome — last */
+  body.loading .chrome { transition:opacity 600ms cubic-bezier(0.22,1,0.36,1) 1400ms; }
+  body.reveal .chrome { opacity:1; }
+
+  /* Emblem overlay — always visible, no reveal transition */
+  body.loading #emblem-overlay { opacity:1; }
 
   body.reveal-done .stage,
-  body.reveal-done .lockup,
+  body.reveal-done .lockup-text-block,
+  body.reveal-done .lockup-tagline,
   body.reveal-done .tile,
-  body.reveal-done .chrome,
-  body.reveal-done .lockup-tagline { transition:none; }
+  body.reveal-done .chrome { transition:none; }
 </style>
 </head>
 <body class="loading">
@@ -2552,7 +2582,7 @@ window.addEventListener('resize', syncPreloaderEmblemToLockup);
       const tx = r.left + r.width / 2;
       const ty = r.top + r.height / 2;
       const distance = Math.hypot(tx - cx, ty - cy);
-      const delay = 50 + (distance / maxDist) * 200;
+      const delay = 200 + (distance / maxDist) * 300;
       tile.style.transitionDelay = `${Math.round(delay)}ms`;
     });
   }
@@ -2561,21 +2591,30 @@ window.addEventListener('resize', syncPreloaderEmblemToLockup);
   async function finishPreloader() {
     if (hidden) return;
     hidden = true;
-    target = 100;
-    counter.textContent = '100%';
+    // Step 1: snap counter to 100%
+    target = 100; counter.textContent = '100%';
     await new Promise(r => setTimeout(r, 200));
+    // Step 2: fade counter out
+    counter.style.transition = 'opacity 400ms cubic-bezier(0.22,1,0.36,1)';
+    counter.style.opacity = '0';
+    await new Promise(r => setTimeout(r, 400));
+    // Step 3: dissolve preloader bg (overlay emblem already on same position)
+    prl.classList.add('hidden');
+    // Step 4: silence — only emblem visible
+    await new Promise(r => setTimeout(r, 300));
+    // Step 5: stagger delays then fire reveal
     calculateTileDelays();
     document.body.classList.add('reveal');
     document.body.classList.remove('loading');
-    await new Promise(r => setTimeout(r, 100));
-    prl.classList.add('hidden');
+    // Step 6: remove preloader from DOM after fade
     setTimeout(() => { try { prl.remove(); } catch(_){} }, 800);
+    // Step 7: reveal-done after name finishes (2200ms anim)
     setTimeout(() => {
       document.body.classList.add('reveal-done');
       document.querySelectorAll('.tile video').forEach(v => {
         if (v.readyState >= 2) v.play().catch(()=>{});
       });
-    }, 2000);
+    }, 3000);
   }
 
   // ── settle-once wrapper: resolves on load/error/timeout ─
