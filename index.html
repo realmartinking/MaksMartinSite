@@ -489,6 +489,9 @@ const EX_PAD = 120, MIN_GAP = 100, SEARCH_R = 1500, BLOCK_MIN = 1.8;
 let BLOCK_PAD = parseInt(localStorage.getItem('blockPad') ?? '120');
 let captionGap = 14;         // design px between tile bottom and caption top
 let captionDefaultSize = 14; // design px
+// True after world is positioned (2 rAF after init builds blocks).
+// setTileMedia uses data-src before this, src directly after.
+let _initDone = false;
 
 function mulberry32(seed) {
   return function() {
@@ -994,16 +997,18 @@ function setTileMedia(tile, src, type) {
   tile.querySelectorAll('video,img').forEach(el=>el.remove());
   if (type==='video') {
     const v=document.createElement('video');
-    // preload=metadata: browser loads header only — Safari needs this to play() reliably.
-    // No autoplay attr — IntersectionObserver controls play/pause after world is positioned.
-    v.preload='metadata'; v.muted=true; v.loop=true;
-    v.setAttribute('muted','');               // Safari requires attribute, not just property
+    v.muted=true; v.loop=true;
+    v.setAttribute('muted','');              // Safari requires attribute, not just property
     v.setAttribute('playsinline','');
-    v.setAttribute('webkit-playsinline','');  // legacy iOS Safari
-    v.src=src;
+    v.setAttribute('webkit-playsinline',''); // legacy iOS Safari
+    if (_initDone) {
+      // Post-init (edit/rebuild): world is positioned, load immediately
+      v.preload='auto'; v.src=src;
+    } else {
+      // Initial load: defer src — tier1/tier2 split happens after world positions
+      v.preload='none'; v.dataset.src=src;
+    }
     tile.insertBefore(v, tile.firstChild);
-    // Note: observation deferred — see init(). Observing here fires before world is
-    // positioned, causing Safari to see all tiles as off-screen and pause() them all.
   } else {
     const img=document.createElement('img');
     img.src=src; img.loading='lazy';
@@ -1158,7 +1163,7 @@ function rebuildAllBlocks() {
     BLOCKS[i].innerHTML='';
     buildBlock(BLOCKS[i], BLOCK_W, BLOCK_H, i);
   }
-  // World already positioned here — observe immediately (no delay needed)
+  // _initDone=true here so videos already have src — observe immediately
   document.querySelectorAll('.tile video').forEach(v => tileVideoObserver.observe(v));
 }
 
@@ -1375,32 +1380,50 @@ async function init() {
 
   requestAnimationFrame(render);
 
-  // Start observing AFTER world is positioned (2 rAF cycles):
-  //   Frame 1: render() fires → applies world transform → tiles visually appear on screen
-  //   Frame 2: IntersectionObserver evaluates against already-positioned world →
-  //            in-view tiles get isIntersecting:true → play() called correctly in all browsers
-  // Without this delay, Safari sees all tiles off-screen (world not yet transformed) and
-  // calls pause() on everything — then never re-fires because Safari's IO doesn't track
-  // CSS transform changes on ancestor elements (unlike Chrome).
+  // 2 rAF: Frame1 = render positions world. Frame2 = IO sees correct positions.
+  // Also: split videos into tier1 (in viewport) and tier2 (outside).
+  //   Tier1: src set immediately, preloader waits for their loadeddata.
+  //   Tier2: src deferred, IO lazy-loads when they approach viewport.
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    document.querySelectorAll('.tile video').forEach(v => tileVideoObserver.observe(v));
+    _initDone = true;
+    const tier1 = [], tier2 = [];
+    document.querySelectorAll('.tile video[data-src]').forEach(v => {
+      const r = v.getBoundingClientRect();
+      const inView = r.right > -150 && r.left < window.innerWidth  + 150 &&
+                     r.bottom > -150 && r.top  < window.innerHeight + 150;
+      (inView ? tier1 : tier2).push(v);
+    });
+    // Load tier1 — preloader is waiting for their first frames
+    tier1.forEach(v => { v.preload='auto'; v.src=v.dataset.src; delete v.dataset.src; v.load(); });
+    // Resolve so preloader can proceed
+    _tier1ReadyResolve(tier1);
+    // Tier2: IO handles lazy load
+    tier2.forEach(v => tileVideoObserver.observe(v));
+    // Tier1: also observed for play/pause control
+    tier1.forEach(v => tileVideoObserver.observe(v));
   }));
 }
 
-// IntersectionObserver: play tile videos when visible, pause when not.
-// Observation starts after init positions the world — see init() above.
+// Promise resolves with tier1 video array after world is positioned.
+let _tier1ReadyResolve;
+const _tier1ReadyPromise = new Promise(r => { _tier1ReadyResolve = r; });
+
+// IO: tier1 videos have src (play/pause). Tier2 videos have data-src (lazy load on approach).
 const tileVideoObserver = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     const v = e.target;
     if (e.isIntersecting) {
-      v.play().catch(() => {});
+      if (v.dataset.src) {
+        // Tier2: first time in range — set src and load
+        v.preload = 'auto'; v.src = v.dataset.src; delete v.dataset.src; v.load();
+        v.addEventListener('loadeddata', () => v.play().catch(()=>{}), {once:true});
+      } else {
+        v.play().catch(()=>{});
+      }
     } else {
       v.pause();
     }
   });
-// rootMargin 600px: compensates for CSS transform scale on .world —
-// at u < 1 (small screens) physical viewport pixels differ from design pixels,
-// so visible tiles may be outside a smaller margin.
 }, { rootMargin: '600px' });
 
 init();
@@ -1764,10 +1787,12 @@ world.addEventListener('pointerenter', e=>{
   if (!prl || !counter) return;
 
   const START  = Date.now();
-  const MIN_MS = 800;
+  const MIN_MS = 600;
   let hidden   = false;
+  let display  = 0;
+  let target   = 0;
 
-  // ── Static first-frame emblem (no animation) ──────────
+  // ── Emblem: show first frame immediately ──────────────
   prl.querySelectorAll('video').forEach(v => {
     v.src = v.classList.contains('emb-dark')
       ? 'assets/MaksMartinLogoBlack.mp4'
@@ -1776,13 +1801,7 @@ world.addEventListener('pointerenter', e=>{
     v.load();
   });
 
-  // ── Progress state ─────────────────────────────────────
-  let loaded  = 0;
-  let total   = 0;
-  let display = 0;
-  let target  = 0;
-
-  // ── rAF counter loop ───────────────────────────────────
+  // ── rAF progress display ───────────────────────────────
   function tick() {
     if (hidden) return;
     display += (target - display) * 0.08;
@@ -1791,88 +1810,89 @@ world.addEventListener('pointerenter', e=>{
   }
   requestAnimationFrame(tick);
 
-  // ── Hide preloader (called once, guarded) ──────────────
+  // ── Hide (once, guarded) ───────────────────────────────
   function hidePreloader() {
     if (hidden) return;
     hidden = true;
+    target = 100;
     counter.textContent = '100%';
     prl.classList.add('prl-out');
     setTimeout(() => { try { prl.remove(); } catch(_){} }, 650);
   }
 
-  // ── Mark one asset as done, trigger hide when all done ─
-  function markOne() {
-    if (hidden) return;
-    loaded = Math.min(loaded + 1, total);
-    target = Math.round(loaded / total * 100);
-    if (loaded >= total) {
-      const elapsed   = Date.now() - START;
-      const remaining = Math.max(0, MIN_MS - elapsed);
-      setTimeout(hidePreloader, remaining + 200);
-    }
-  }
-
-  // ── Per-asset promise: always resolves (success/error/timeout) ─
-  function makeAsset(executor) {
+  // ── settle-once wrapper: resolves on load/error/timeout ─
+  function waitFor(setupFn, ms) {
     return new Promise(resolve => {
       let done = false;
-      const settle = (warn) => {
-        if (done) return;
-        done = true;
-        if (warn) console.warn('[preloader]', warn);
-        resolve();
-      };
-      executor(settle);
-      setTimeout(() => settle('asset timeout'), 8000); // hard per-asset limit
+      const settle = () => { if (!done) { done = true; resolve(); } };
+      try { setupFn(settle); } catch(_) { settle(); }
+      setTimeout(settle, ms || 5000);
     });
   }
 
-  // ── Asset list ─────────────────────────────────────────
-  // Preloader only waits for: fonts + static images (png/gif).
-  // Videos are NOT tracked — they start lazily via IntersectionObserver after site shows.
-  // This prevents Safari's media-load limit from stalling progress at ~20%.
-  const assets = [];
-
-  // Font
-  assets.push(makeAsset(settle => {
-    document.fonts.ready.then(() => settle(), () => settle('fonts failed'));
-  }));
-
-  // Static images only (not videos — Safari can't load many in parallel)
-  for (const p of PROJECTS) {
-    if (p.type !== 'video') {
-      assets.push(makeAsset(settle => {
-        const img = new Image();
-        img.onload  = () => settle();
-        img.onerror = () => settle('image failed: ' + p.src);
-        img.src = p.src;
-      }));
-    }
+  // ── Wait for video first frame (readyState >= 2) ───────
+  function waitForFirstFrame(v) {
+    return waitFor(settle => {
+      if (v.readyState >= 2) return settle();
+      v.addEventListener('loadeddata', settle, {once:true});
+      v.addEventListener('canplay',    settle, {once:true});
+      v.addEventListener('error',      settle, {once:true});
+    }, 5000);
   }
 
-  total = assets.length;
-  if (total === 0) { hidePreloader(); return; }
+  // ── Main async preloader logic ─────────────────────────
+  (async () => {
+    // Wait for world to be positioned and tier1 videos to be identified.
+    // Falls back to empty array after 3s if init is very slow.
+    const tier1 = await Promise.race([
+      _tier1ReadyPromise,
+      new Promise(r => setTimeout(() => r([]), 3000)),
+    ]);
 
-  // Wire each resolved asset to markOne
-  assets.forEach(p => p.then(markOne));
+    // Build task list
+    const tasks = [];
 
-  // Soft exit: if >= 80% done and >= 3s passed — don't wait
-  const softInterval = setInterval(() => {
-    if (hidden) { clearInterval(softInterval); return; }
+    // 1. Fonts
+    tasks.push(waitFor(s => document.fonts.ready.then(s, s), 3000));
+
+    // 2. Tier1 video first frames (already loading — src set in 2-rAF block)
+    for (const v of tier1) tasks.push(waitForFirstFrame(v));
+
+    // 3. Static project images
+    for (const p of PROJECTS) {
+      if (p.type !== 'video') {
+        tasks.push(waitFor(s => {
+          const img = new Image();
+          img.onload = s; img.onerror = s;
+          img.src = p.src;
+        }, 5000));
+      }
+    }
+
+    const total = tasks.length || 1;
+    let loaded = 0;
+
+    // Wrap each task to update progress on settle
+    const tracked = tasks.map(t => t.then(() => {
+      loaded++;
+      target = Math.round(loaded / total * 100);
+    }));
+
+    // Wait for all tasks or 8s hard cap
+    await Promise.race([
+      Promise.all(tracked),
+      new Promise(r => setTimeout(r, 8000)),
+    ]);
+
+    // Enforce minimum display time
     const elapsed = Date.now() - START;
-    if (elapsed >= 3000 && total && loaded / total >= 0.8) {
-      clearInterval(softInterval);
-      hidePreloader();
-    }
-  }, 200);
+    if (elapsed < MIN_MS) await new Promise(r => setTimeout(r, MIN_MS - elapsed));
 
-  // Global hard timeout — 7 seconds max, no matter what
-  setTimeout(() => {
-    if (!hidden) {
-      console.warn('[preloader] hard timeout, forcing exit. loaded:', loaded, '/', total);
-      hidePreloader();
-    }
-  }, 7000);
+    hidePreloader();
+
+    // After preloader gone: play() tier1 videos (IO may not re-fire)
+    setTimeout(() => tier1.forEach(v => v.play().catch(()=>{})), 100);
+  })();
 })();
 </script>
 </body>
