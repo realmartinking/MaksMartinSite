@@ -215,7 +215,7 @@
   /* Emblem overlay: synced via render loop, filter via --emb-filter */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
   #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; filter:var(--emb-filter); }
-  .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
+  .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
   .edit-active .lockup-tagline { cursor:text; }
 
   /* ── Chrome ── */
@@ -328,6 +328,9 @@
   .lockup-text-block.lk-sel { outline:1.5px solid rgba(255,50,50,.9) !important; box-shadow:0 0 0 3px rgba(255,50,50,.12); }
   .lockup-tagline.lk-sel { outline:1.5px solid rgba(50,50,255,.9) !important; box-shadow:0 0 0 3px rgba(50,50,255,.12); }
   body.lockup-edit .lockup-emblem::after { content:'⊘'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; opacity:.3; pointer-events:none; }
+  .lk-resize-handle { position:absolute; right:-7px; top:0; bottom:0; width:14px; cursor:ew-resize; pointer-events:auto; z-index:20; display:flex; align-items:center; justify-content:center; }
+  .lk-resize-handle::before { content:''; width:3px; height:22px; background:rgba(255,50,50,.65); border-radius:2px; }
+  .lockup-tagline .lk-resize-handle::before { background:rgba(50,50,255,.65); }
   #dbg-sel-block { padding:4px 0 2px; border-top:1px dashed #e0e0e0; margin-top:2px; }
   :root[data-theme="dark"] #dbg-sel-block { border-color:#3a3a3a; }
 
@@ -2035,7 +2038,7 @@ function _applyBlockStyle(el, blk) {
   el.style.textAlign     = blk.align  || 'left';
   el.style.letterSpacing = `${blk.letterSpacing || 0}em`;
   el.style.lineHeight    = blk.lineHeight || 0.9;
-  el.style.maxWidth      = blk.width ? `calc(${blk.width} * var(--u))` : 'none';
+  el.style.width         = blk.width ? `calc(${blk.width} * var(--u))` : '';
 }
 
 function renderSystemBlocks(lockupEl) {
@@ -2083,6 +2086,7 @@ function setLockupEditMode(on) {
 
 function deselectLkBlock() {
   selLkId = null;
+  document.querySelectorAll('.lk-resize-handle').forEach(h => h.remove());
   document.querySelectorAll('.lk-sel').forEach(el => el.classList.remove('lk-sel'));
   const panel = document.getElementById('dbg-sel-block');
   if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
@@ -2092,7 +2096,14 @@ function selectLkBlock(id) {
   deselectLkBlock();
   selLkId = id;
   const sel = id === 'tagline' ? '.lockup-tagline' : `.lockup-text-block[data-lk-id="${id}"]`;
-  document.querySelectorAll(sel).forEach(el => el.classList.add('lk-sel'));
+  document.querySelectorAll(sel).forEach(el => {
+    el.classList.add('lk-sel');
+    const h = document.createElement('span');
+    h.className = 'lk-resize-handle';
+    h.dataset.lkType = id === 'tagline' ? 'tagline' : 'block';
+    if (id !== 'tagline') h.dataset.lkId = id;
+    el.appendChild(h);
+  });
   renderLkSelPanel();
 }
 
@@ -2251,6 +2262,49 @@ function addCustomBlock() {
 // ── Drag system ────────────────────────────────────────────────────────────
 stage.addEventListener('pointerdown', e => {
   if (!lockupEditMode) return;
+
+  // ── Resize handle ──────────────────────────────────────────────────────
+  const resizeHandle = e.target.closest('.lk-resize-handle');
+  if (resizeHandle) {
+    e.stopImmediatePropagation();
+    stage.setPointerCapture(e.pointerId);
+    const u = getU();
+    const isTagline = resizeHandle.dataset.lkType === 'tagline';
+    if (isTagline) {
+      const startX = e.clientX, startW = S['tagline-w'] || 280;
+      const onMove = ev => {
+        const w = Math.max(40, Math.round(startW + (ev.clientX - startX) / u));
+        S['tagline-w'] = w; applyAll();
+        const si = document.getElementById('s-tagline-w'), sv = document.getElementById('v-tagline-w');
+        if (si) si.value = w; if (sv) sv.textContent = w;
+        const wi = document.getElementById('tl-w-inp'); if (wi) wi.value = w;
+      };
+      const onUp = () => { document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    } else {
+      const id = resizeHandle.dataset.lkId;
+      const allBlocks = [...systemBlocks, ...customBlocks];
+      const blk = allBlocks.find(b => b.id === id);
+      if (!blk) return;
+      const startX = e.clientX;
+      const startW = blk.width || Math.round(resizeHandle.parentElement.getBoundingClientRect().width / u);
+      const onMove = ev => {
+        blk.width = Math.max(30, Math.round(startW + (ev.clientX - startX) / u));
+        updateAllBlockDom(blk);
+        const wi = document.getElementById('lk-sel-w'); if (wi) wi.value = blk.width;
+      };
+      const onUp = () => {
+        if (blk.system) saveSystemBlocks(); else saveCustomBlocks();
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    }
+    return;
+  }
+
   const textBlock = e.target.closest('.lockup-text-block');
   const taglineEl = e.target.closest('.lockup-tagline');
   const targetEl  = textBlock || taglineEl;
