@@ -219,7 +219,11 @@
   .lockup-emblem { position:absolute; left:calc(var(--emblem-dx)*var(--u)); top:calc(var(--emblem-dy)*var(--u)); width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); transform:translate(-50%,-50%); z-index:1; pointer-events:none; }
   /* Emblem overlay: synced via render loop, filter via --emb-filter */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
-  #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; filter:var(--emb-filter); }
+  #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  #emblem-overlay .emb-light { display:block; filter:url(#kill-white-bg); }
+  #emblem-overlay .emb-dark  { display:none;  filter:url(#kill-black-bg); }
+  :root[data-theme="dark"] #emblem-overlay .emb-light { display:none; }
+  :root[data-theme="dark"] #emblem-overlay .emb-dark  { display:block; }
   .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
   .edit-active .lockup-tagline { cursor:text; }
 
@@ -303,8 +307,11 @@
   }
   .prl-emblem-video {
     position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
-    filter:var(--emb-filter);
   }
+  .prl-emblem-video.emb-light { display:block; filter:url(#kill-white-bg); }
+  .prl-emblem-video.emb-dark  { display:none;  filter:url(#kill-black-bg); }
+  :root[data-theme="dark"] .prl-emblem-video.emb-light { display:none; }
+  :root[data-theme="dark"] .prl-emblem-video.emb-dark  { display:block; }
 
   /* Counter — same offset as Maks block in lockup: (92dp, -191dp) from emblem center */
   .prl-counter {
@@ -359,7 +366,8 @@
 
 <div id="preloader">
   <div class="prl-emblem-wrap">
-    <video class="prl-emblem-video" src="assets/MaksMartinLogo.mp4" autoplay muted loop playsinline preload="auto"></video>
+    <video class="prl-emblem-video emb-light" muted autoplay loop playsinline preload="auto"><source src="assets/MaksMartinLogo.mp4" type="video/mp4"></video>
+    <video class="prl-emblem-video emb-dark"  muted autoplay loop playsinline preload="auto"><source src="assets/MaksMartinLogoBlack.mp4" type="video/mp4"></video>
     <div class="prl-counter">0%</div>
   </div>
 </div>
@@ -368,9 +376,10 @@
   <div class="world" id="world"></div>
 </div>
 
-<!-- Emblem overlay: lives outside .world; SVG filter removes video background -->
+<!-- Emblem overlay: two videos preloaded, CSS display switch by theme -->
 <div id="emblem-overlay" aria-hidden="true">
-  <video src="assets/MaksMartinLogo.mp4" muted autoplay loop playsinline></video>
+  <video class="emb-light" muted autoplay loop playsinline preload="auto"><source src="assets/MaksMartinLogo.mp4" type="video/mp4"></video>
+  <video class="emb-dark"  muted autoplay loop playsinline preload="auto"><source src="assets/MaksMartinLogoBlack.mp4" type="video/mp4"></video>
 </div>
 <svg id="emblem-svg-defs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
   <defs>
@@ -1542,55 +1551,14 @@ document.addEventListener('keydown', e=>{
 ======================================================== */
 const root=document.documentElement;
 const sw=document.getElementById('themeSwitch');
-function _switchEmblemVideo(v, newSrc, newFilter) {
-  if (!v) return;
-  const cur = (v.currentSrc || v.getAttribute('src') || '').split('/').pop();
-  const expected = newSrc.split('/').pop();
-  if (cur === expected) {
-    // Same file — only update filter (initial load, no fade needed)
-    v.style.filter = newFilter;
-    return;
-  }
-  // Fade out → swap → fade in
-  v.style.transition = 'opacity 200ms cubic-bezier(0.22,1,0.36,1)';
-  v.style.opacity = '0';
-  setTimeout(() => {
-    v.src = newSrc;
-    v.style.filter = newFilter;
-    v.load();
-    const fadeIn = () => {
-      v.play().catch(()=>{});
-      requestAnimationFrame(() => { v.style.opacity = '1'; });
-    };
-    if (v.readyState >= 2) {
-      fadeIn();
-    } else {
-      v.addEventListener('loadeddata', fadeIn, { once: true });
-      setTimeout(() => { if (v.style.opacity === '0') { v.style.opacity = '1'; v.play().catch(()=>{}); } }, 500);
-    }
-  }, 200);
-}
-function syncEmblemToTheme(theme) {
-  const newSrc    = theme === 'dark' ? 'assets/MaksMartinLogoBlack.mp4' : 'assets/MaksMartinLogo.mp4';
-  const newFilter = theme === 'dark' ? 'url(#kill-black-bg)' : 'url(#kill-white-bg)';
-  _switchEmblemVideo(document.querySelector('#emblem-overlay video'), newSrc, newFilter);
-  _switchEmblemVideo(document.querySelector('.prl-emblem-video'),     newSrc, newFilter);
-}
 function applyTheme(theme) {
-  // 1. data-theme on <html>
+  // 1. data-theme on <html> — CSS handles emblem display automatically
   if (theme === 'dark') root.setAttribute('data-theme', 'dark');
   else                  root.removeAttribute('data-theme');
   // 2. Persist
   try { localStorage.setItem('theme', theme); } catch(e) {}
   // 3. Button label
   if (sw) sw.textContent = theme === 'dark' ? 'light' : 'dark';
-  // 4. Emblem: src + explicit inline filter
-  syncEmblemToTheme(theme);
-  // 5. Diagnostic
-  console.log('[theme]', theme,
-    '| data-theme:', root.getAttribute('data-theme'),
-    '| --bg:', getComputedStyle(root).getPropertyValue('--bg').trim(),
-    '| --emb-filter:', getComputedStyle(root).getPropertyValue('--emb-filter').trim());
 }
 const DEBUG_TOKEN = 'maks2026';
 const _DBG_STORE  = 'mm-debug-token';
