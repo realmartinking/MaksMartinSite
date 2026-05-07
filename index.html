@@ -1382,16 +1382,11 @@ function applyTheme(t) {
   else            { root.removeAttribute('data-theme');      sw.textContent='dark';  }
   localStorage.setItem('theme', t);
 }
-// Production: hide settings panel on non-localhost; Shift+D to toggle
+// Show settings panel only on localhost OR when ?debug=1 is in URL
 (()=>{
-  const dbgEl = document.getElementById('dbg');
-  const isLocal = ['localhost','127.0.0.1',''].includes(location.hostname);
-  if (!isLocal) dbgEl.style.display = 'none';
-  document.addEventListener('keydown', e=>{
-    if (e.shiftKey && (e.key==='D'||e.key==='d'||e.key==='В'||e.key==='в')) {
-      dbgEl.style.display = dbgEl.style.display==='none' ? '' : 'none';
-    }
-  });
+  const isLocal  = ['localhost','127.0.0.1',''].includes(location.hostname);
+  const isDebug  = new URLSearchParams(location.search).has('debug');
+  if (!isLocal && !isDebug) document.getElementById('dbg').style.display = 'none';
 })();
 
 // Restore saved theme (syncs with info.html)
