@@ -207,8 +207,8 @@
   /* Emblem videos moved to #emblem-overlay (outside .world) for correct mix-blend-mode */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
   #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; transition:opacity .4s ease; }
-  #emblem-overlay .emb-light { opacity:1; mix-blend-mode:multiply; }
-  #emblem-overlay .emb-dark  { opacity:0; mix-blend-mode:screen; }
+  #emblem-overlay .emb-light { opacity:1; filter:url(#kill-white-bg); }
+  #emblem-overlay .emb-dark  { opacity:0; filter:url(#kill-black-bg); }
   :root[data-theme="dark"] #emblem-overlay .emb-light { opacity:0; }
   :root[data-theme="dark"] #emblem-overlay .emb-dark  { opacity:1; }
   .lockup-tagline { font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); margin-top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); transition:opacity .15s; }
@@ -321,11 +321,27 @@
   <div class="world" id="world"></div>
 </div>
 
-<!-- Emblem overlay: lives outside .world so mix-blend-mode reaches body background -->
+<!-- Emblem overlay: lives outside .world; SVG filters remove video background -->
 <div id="emblem-overlay" aria-hidden="true">
   <video class="emb-light" src="assets/MaksMartinLogo.mp4"      muted autoplay loop playsinline></video>
   <video class="emb-dark"  src="assets/MaksMartinLogoBlack.mp4" muted autoplay loop playsinline></video>
 </div>
+<svg id="emblem-svg-defs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="kill-white-bg" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="-1 0 0 0 1  0 -1 0 0 1  0 0 -1 0 1  0 0 0 1 0"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.333 0.333 0.333 0 0"/>
+      <feComposite in2="SourceGraphic" operator="in"/>
+    </filter>
+    <filter id="kill-black-bg" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.67 2.67 2.67 0 0" result="mask"/>
+      <feComponentTransfer in="mask" result="thresh">
+        <feFuncA type="discrete" tableValues="0 1"/>
+      </feComponentTransfer>
+      <feComposite in="SourceGraphic" in2="thresh" operator="in"/>
+    </filter>
+  </defs>
+</svg>
 
 <canvas id="guides-canvas"></canvas>
 <div id="link-popup">
