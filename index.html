@@ -994,10 +994,11 @@ function setTileMedia(tile, src, type) {
   tile.querySelectorAll('video,img').forEach(el=>el.remove());
   if (type==='video') {
     const v=document.createElement('video');
-    v.src=src; v.muted=true; v.autoplay=true; v.loop=true;
+    v.preload='none'; v.muted=true; v.autoplay=true; v.loop=true;
     v.setAttribute('muted','');               // Safari requires attribute, not just property
     v.setAttribute('playsinline','');
     v.setAttribute('webkit-playsinline','');  // legacy iOS Safari
+    v.src=src;
     tile.insertBefore(v, tile.firstChild);
     tileVideoObserver.observe(v);
   } else {
@@ -1373,17 +1374,18 @@ async function init() {
   requestAnimationFrame(render);
 }
 
-// IntersectionObserver: play tile videos only when visible — fixes Safari autoplay limits
+// IntersectionObserver: load and play tile videos only when near viewport
 const tileVideoObserver = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     const v = e.target;
     if (e.isIntersecting) {
+      if (v.preload === 'none') { v.preload = 'auto'; v.load(); }
       v.play().catch(() => {});
     } else {
       v.pause();
     }
   });
-}, { rootMargin: '200px' });
+}, { rootMargin: '300px' });
 
 init();
 
