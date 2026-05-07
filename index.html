@@ -210,14 +210,12 @@
   #guides-canvas { position:fixed; inset:0; pointer-events:none; z-index:800; }
 
   /* ── Lockup ── */
-  .lockup { position:absolute; background:transparent; color:var(--fg); display:flex; flex-direction:column; align-items:flex-start; justify-content:center; user-select:none; pointer-events:none; opacity:0; filter:blur(4px); transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1),filter 1400ms cubic-bezier(0.16,1,0.3,1); }
-  .lockup-row { display:flex; align-items:flex-end; }
-  .lockup-word { font-family:'Gramatika',-apple-system,sans-serif; font-weight:700; font-size:calc(var(--lk-font)*var(--u)); letter-spacing:0; line-height:.9; position:relative; z-index:2; }
-  .lockup-emblem { width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); margin:0 calc(var(--emblem-margin)*var(--u)); transform:translate(calc(var(--emblem-dx)*var(--u)),calc(var(--emblem-dy)*var(--u))); display:inline-flex; align-items:center; justify-content:center; position:relative; z-index:1; flex-shrink:0; }
+  .lockup { position:absolute; background:transparent; color:var(--fg); width:0; height:0; overflow:visible; user-select:none; pointer-events:none; opacity:0; filter:blur(4px); transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1),filter 1400ms cubic-bezier(0.16,1,0.3,1); }
+  .lockup-emblem { position:absolute; left:calc(var(--emblem-dx)*var(--u)); top:calc(var(--emblem-dy)*var(--u)); width:calc(var(--emblem-w)*var(--u)); height:calc(var(--emblem-h)*var(--u)); transform:translate(-50%,-50%); z-index:1; pointer-events:none; }
   /* Emblem overlay: synced via render loop, filter via --emb-filter */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
   #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; filter:var(--emb-filter); }
-  .lockup-tagline { font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); margin-top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
+  .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
   .edit-active .lockup-tagline { cursor:text; }
 
   /* ── Chrome ── */
@@ -428,7 +426,12 @@
       <select id="s-snap"><option value="0">Off</option><option value="10">10</option><option value="20">20</option><option value="40">40</option><option value="80">80</option></select></div>
 
     <div class="dbg-section">Лок-ап</div>
-    <div class="dbg-row"><label>Размер шрифта</label><input type="range" id="s-lk-font" min="100" max="300" step="1"><span class="dbg-val" id="v-lk-font"></span></div>
+    <div class="dbg-row"><label>Пресет</label>
+      <select id="s-lockup-preset" style="flex:1;font-size:11px;border:1px solid #ddd;border-radius:3px;padding:1px 3px;background:#fafafa;color:#333;cursor:pointer">
+        <option value="default">Default</option>
+        <option value="badge">Badge</option>
+        <option value="custom">Custom</option>
+      </select></div>
     <div class="dbg-row"><label>Смещение X</label><input type="range" id="s-lockup-offset-x" min="-300" max="300" step="1"><span class="dbg-val" id="v-lockup-offset-x"></span></div>
     <div class="dbg-row"><label>Смещение Y</label><input type="range" id="s-lockup-offset-y" min="-300" max="300" step="1"><span class="dbg-val" id="v-lockup-offset-y"></span></div>
 
@@ -441,8 +444,8 @@
 
     <div class="dbg-section">Слоган</div>
     <div class="dbg-row"><label>Размер шрифта</label><input type="range" id="s-tagline-font" min="10" max="30" step=".5"><span class="dbg-val" id="v-tagline-font"></span></div>
-    <div class="dbg-row"><label>Отступ сверху</label><input type="range" id="s-tagline-mt" min="0" max="150" step="1"><span class="dbg-val" id="v-tagline-mt"></span></div>
-    <div class="dbg-row"><label>Сдвиг X</label><input type="range" id="s-tagline-dx" min="-200" max="200" step="1"><span class="dbg-val" id="v-tagline-dx"></span></div>
+    <div class="dbg-row"><label>Позиция Y</label><input type="range" id="s-tagline-mt" min="-300" max="600" step="1"><span class="dbg-val" id="v-tagline-mt"></span></div>
+    <div class="dbg-row"><label>Позиция X</label><input type="range" id="s-tagline-dx" min="-500" max="500" step="1"><span class="dbg-val" id="v-tagline-dx"></span></div>
     <div class="dbg-row"><label>Выравнивание</label><span style="display:flex;gap:8px;font-size:10px;color:#555"><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="left" style="margin:0"> L</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="center" style="margin:0"> C</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="right" style="margin:0"> R</label></span></div>
 
     <div class="dbg-section" style="display:flex;align-items:center;justify-content:space-between">
@@ -1206,12 +1209,9 @@ function buildBlock(blockEl, bw, bh, blockIdx) {
   lk.style.left='50%'; lk.style.top='50%';
   lk.style.transform='translate(calc(-50% + var(--lockup-offset-x) * var(--u)), calc(-50% + var(--lockup-offset-y) * var(--u)))';
   lk.innerHTML=`
-    <div class="lockup-row">
-      <span class="lockup-word">Maks</span>
-      <span class="lockup-emblem" aria-hidden="true"></span>
-      <span class="lockup-word">Martin</span>
-    </div>
+    <span class="lockup-emblem" aria-hidden="true"></span>
     <div class="lockup-tagline">Timeless design,<br/>like classical music,<br/>love and money</div>`;
+  renderSystemBlocks(lk);
   renderCustomBlocks(lk);
   blockEl.appendChild(lk);
   tileEls[blockIdx]    = [];
@@ -1572,10 +1572,42 @@ sw.addEventListener('click',()=>applyTheme(root.getAttribute('data-theme')==='da
 /* ========================================================
    DEBUG PANEL — sliders
 ======================================================== */
+
+// ── Migration: lk-font → per-block fontSize ─────────────────────────────────
+(function migrateLkFont() {
+  if (localStorage.getItem('__system_blocks_v1')) return;
+  try {
+    const dbg = JSON.parse(localStorage.getItem('dbg') || '{}');
+    const lkFont = dbg['lk-font'];
+    if (lkFont && lkFont !== 105) {
+      const blocks = [
+        {id:'name-maks',   text:'Maks',   fontSize:105, weight:700, align:'left', letterSpacing:0, lineHeight:0.9, x:-380, y:52, system:true, role:'name'},
+        {id:'name-martin', text:'Martin', fontSize:105, weight:700, align:'left', letterSpacing:0, lineHeight:0.9, x:74,   y:52, system:true, role:'name'},
+      ];
+      localStorage.setItem('mm-lockup-system', JSON.stringify(blocks.map(b => ({...b, fontSize: lkFont}))));
+    }
+    delete dbg['lk-font'];
+    localStorage.setItem('dbg', JSON.stringify(dbg));
+  } catch(e) {}
+  localStorage.setItem('__system_blocks_v1', '1');
+})();
+
+// ── Migration: tagline from flex-relative to absolute coords ─────────────────
+(function migrateTaglineAbs() {
+  if (localStorage.getItem('__tagline_abs_v1')) return;
+  try {
+    const dbg = JSON.parse(localStorage.getItem('dbg') || '{}');
+    if (dbg['tagline-mt'] !== undefined) dbg['tagline-mt'] = dbg['tagline-mt'] + 211;
+    if (dbg['tagline-dx'] !== undefined) dbg['tagline-dx'] = dbg['tagline-dx'] - 265;
+    localStorage.setItem('dbg', JSON.stringify(dbg));
+  } catch(e) {}
+  localStorage.setItem('__tagline_abs_v1', '1');
+})();
+
 const DEFAULTS = {
-  'lk-font':160,'emblem-margin':-74,'emblem-w':245,'emblem-h':274,
-  'emblem-dx':-6,'emblem-dy':31,'tagline-font':15,'tagline-mt':21,
-  'tagline-dx':200,'nav-top':5,'nav-bottom':8,'nav-font':17,
+  'emblem-margin':-74,'emblem-w':245,'emblem-h':274,
+  'emblem-dx':-6,'emblem-dy':31,'tagline-font':15,'tagline-mt':232,
+  'tagline-dx':-65,'nav-top':5,'nav-bottom':8,'nav-font':17,
   'lockup-offset-x':0,'lockup-offset-y':0,
 };
 function loadSettings() {
@@ -1763,6 +1795,8 @@ function buildExportData() {
     taglineText: localStorage.getItem('taglineText')||'',
     taglineAlign: localStorage.getItem('mm-tagline-align')||'left',
     customBlocks: [...customBlocks],
+    systemBlocks: [...systemBlocks],
+    lockupPreset: currentPreset,
   };
 }
 function exportFullState() {
@@ -1790,6 +1824,8 @@ function importFullState(jsonStr) {
     if (data.navLinks)     localStorage.setItem('navLinks', JSON.stringify(data.navLinks));
     if (data.taglineText)  localStorage.setItem('taglineText', data.taglineText);
     if (data.customBlocks) localStorage.setItem('mm-lockup-custom', JSON.stringify(data.customBlocks));
+    if (data.systemBlocks) localStorage.setItem('mm-lockup-system', JSON.stringify(data.systemBlocks));
+    if (data.lockupPreset) localStorage.setItem('mm-lockup-preset', data.lockupPreset);
     location.reload();
   } catch(e) { alert('Ошибка импорта: '+e.message); console.error('[import]',e); }
 }
@@ -1912,28 +1948,126 @@ world.addEventListener('pointerenter', e=>{
 },{capture:true});
 
 /* ========================================================
-   LOCKUP EDITOR — custom text blocks
+   LOCKUP EDITOR — system blocks, custom blocks, presets
 ======================================================== */
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SYSTEM_BLOCKS_DEFAULT = [
+  { id:'name-maks',   text:'Maks',   fontSize:105, weight:700, align:'left',
+    letterSpacing:0, lineHeight:0.9, x:-380, y:52, system:true, role:'name' },
+  { id:'name-martin', text:'Martin', fontSize:105, weight:700, align:'left',
+    letterSpacing:0, lineHeight:0.9, x:74,   y:52, system:true, role:'name' },
+];
+
+const LOCKUP_PRESETS = {
+  default: {
+    'name-maks':   { x:-380, y:52,  fontSize:105 },
+    'name-martin': { x:74,   y:52,  fontSize:105 },
+    tagline:       { dx:-65, mt:232, align:'center' },
+  },
+  badge: {
+    'name-maks':   { x:80, y:-180, fontSize:78 },
+    'name-martin': { x:80, y:-110, fontSize:78 },
+    tagline:       { dx:0,  mt:280, align:'center' },
+  },
+};
+
+// ── System blocks state ───────────────────────────────────────────────────────
+let systemBlocks = [];
+(()=>{
+  try { systemBlocks = JSON.parse(localStorage.getItem('mm-lockup-system') || '[]'); } catch(_) {}
+  if (!systemBlocks.length) systemBlocks = SYSTEM_BLOCKS_DEFAULT.map(b => ({...b}));
+})();
+function saveSystemBlocks() { localStorage.setItem('mm-lockup-system', JSON.stringify(systemBlocks)); }
+
+// ── Custom blocks state ───────────────────────────────────────────────────────
 let customBlocks = [];
 (()=>{
   try { customBlocks = JSON.parse(localStorage.getItem('mm-lockup-custom') || '[]'); } catch(_) {}
 })();
 function saveCustomBlocks() { localStorage.setItem('mm-lockup-custom', JSON.stringify(customBlocks)); }
 
-function renderCustomBlocks(lockupEl) {
-  lockupEl.querySelectorAll('.lockup-text-block').forEach(el => el.remove());
-  for (const blk of customBlocks) {
+// ── Preset state ──────────────────────────────────────────────────────────────
+let currentPreset = localStorage.getItem('mm-lockup-preset') || 'default';
+
+function setLockupPresetUI(name) {
+  currentPreset = name;
+  localStorage.setItem('mm-lockup-preset', name);
+  const sel = document.getElementById('s-lockup-preset');
+  if (sel) sel.value = name;
+}
+
+function applyPreset(name) {
+  const preset = LOCKUP_PRESETS[name];
+  if (!preset) return;
+  for (const blk of systemBlocks) {
+    const p = preset[blk.id];
+    if (p) {
+      if (p.x        != null) blk.x        = p.x;
+      if (p.y        != null) blk.y        = p.y;
+      if (p.fontSize != null) blk.fontSize = p.fontSize;
+    }
+  }
+  saveSystemBlocks();
+  if (preset.tagline) {
+    S['tagline-dx'] = preset.tagline.dx;
+    S['tagline-mt'] = preset.tagline.mt;
+    root.style.setProperty('--tagline-align', preset.tagline.align);
+    localStorage.setItem('mm-tagline-align', preset.tagline.align);
+    document.querySelectorAll('input[name="tl-align"]').forEach(r => r.checked = r.value === preset.tagline.align);
+    applyAll();
+    const dxI=document.getElementById('s-tagline-dx'), dxV=document.getElementById('v-tagline-dx');
+    const mtI=document.getElementById('s-tagline-mt'), mtV=document.getElementById('v-tagline-mt');
+    if (dxI) { dxI.value=preset.tagline.dx; dxV.textContent=preset.tagline.dx; }
+    if (mtI) { mtI.value=preset.tagline.mt; mtV.textContent=preset.tagline.mt; }
+  }
+  document.querySelectorAll('.lockup').forEach(lk => { renderSystemBlocks(lk); renderCustomBlocks(lk); });
+  setLockupPresetUI(name);
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function _applyBlockStyle(el, blk) {
+  el.style.left          = `calc(${blk.x} * var(--u))`;
+  el.style.top           = `calc(${blk.y} * var(--u))`;
+  el.style.fontSize      = `calc(${blk.fontSize} * var(--u))`;
+  el.style.fontWeight    = blk.weight || 700;
+  el.style.textAlign     = blk.align  || 'left';
+  el.style.letterSpacing = `${blk.letterSpacing || 0}em`;
+  el.style.lineHeight    = blk.lineHeight || 0.9;
+}
+
+function renderSystemBlocks(lockupEl) {
+  lockupEl.querySelectorAll('.lockup-text-block.system').forEach(el => el.remove());
+  for (const blk of systemBlocks) {
     const el = document.createElement('div');
-    el.className = 'lockup-text-block';
+    el.className = 'lockup-text-block system';
     el.dataset.lkId = blk.id;
-    el.style.left = `calc(${blk.x} * var(--u))`;
-    el.style.top  = `calc(${blk.y} * var(--u))`;
-    el.style.fontSize = `calc(${blk.fontSize} * var(--u))`;
+    _applyBlockStyle(el, blk);
     el.textContent = blk.text;
     lockupEl.appendChild(el);
   }
 }
 
+function renderCustomBlocks(lockupEl) {
+  lockupEl.querySelectorAll('.lockup-text-block:not(.system)').forEach(el => el.remove());
+  for (const blk of customBlocks) {
+    const el = document.createElement('div');
+    el.className = 'lockup-text-block';
+    el.dataset.lkId = blk.id;
+    _applyBlockStyle(el, blk);
+    el.textContent = blk.text;
+    lockupEl.appendChild(el);
+  }
+}
+
+function updateAllBlockDom(blk) {
+  document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => {
+    _applyBlockStyle(el, blk);
+    el.textContent = blk.text;
+  });
+}
+
+// ── Edit mode ─────────────────────────────────────────────────────────────────
 let lockupEditMode = false;
 let selLkId = null;
 
@@ -1960,6 +2094,8 @@ function selectLkBlock(id) {
   renderLkSelPanel();
 }
 
+function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
 function renderLkSelPanel() {
   const panel = document.getElementById('dbg-sel-block');
   if (!panel) return;
@@ -1971,54 +2107,119 @@ function renderLkSelPanel() {
     return;
   }
 
-  const blk = customBlocks.find(b => b.id === selLkId);
+  const allBlocks = [...systemBlocks, ...customBlocks];
+  const blk = allBlocks.find(b => b.id === selLkId);
   if (!blk) return;
 
+  const isSystem = !!blk.system;
+  const R = 'display:flex;align-items:center;gap:4px;margin-bottom:3px';
+  const L = 'flex:0 0 60px;font-size:10px;color:#666;white-space:nowrap';
+  const V = 'flex:0 0 36px;text-align:right;font-size:10px;color:#999;font-variant-numeric:tabular-nums';
+  const SEL = 'flex:1;font-size:10px;border:1px solid #ddd;border-radius:3px;padding:1px 3px;background:#fafafa;color:#333';
+  const NUM = 'flex:1;font-size:10px;padding:1px 4px;border:1px solid #ddd;border-radius:3px;background:#fafafa;color:#333;font-family:inherit;width:0';
+  const btnHtml = isSystem
+    ? `<button id="lk-sel-reset" style="flex:1;padding:3px 0;border:1px solid #a0c0e0;border-radius:4px;background:#f4f8ff;font-size:10px;cursor:pointer;font-family:inherit;color:#446">↺ Reset</button>`
+    : `<button id="lk-sel-del"   style="flex:1;padding:3px 0;border:1px solid #f0a0a0;border-radius:4px;background:#fff8f8;font-size:10px;cursor:pointer;font-family:inherit;color:#cc4444">🗑 Удалить</button>`;
+
   panel.innerHTML = `
-    <div class="dbg-row" style="align-items:flex-start;margin-bottom:4px">
-      <label style="flex:0 0 50px;padding-top:2px">Текст</label>
-      <textarea id="lk-sel-text" rows="2" style="flex:1;font-size:10px;padding:2px 4px;border:1px solid #ddd;border-radius:3px;background:#fafafa;color:#333;font-family:inherit;resize:vertical;min-height:32px;box-sizing:border-box">${blk.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+    <div style="${R};align-items:flex-start">
+      <label style="${L};padding-top:2px">Текст</label>
+      <textarea id="lk-sel-text" rows="2" style="flex:1;font-size:10px;padding:2px 4px;border:1px solid #ddd;border-radius:3px;background:#fafafa;color:#333;font-family:inherit;resize:vertical;min-height:30px;box-sizing:border-box">${_escHtml(blk.text)}</textarea>
     </div>
-    <div class="dbg-row">
-      <label style="flex:0 0 50px">Размер</label>
-      <input type="range" id="lk-sel-size" min="8" max="120" step="0.5" value="${blk.fontSize}" style="flex:1">
-      <span class="dbg-val" id="lk-sel-size-val">${blk.fontSize}</span>
-    </div>
-    <div style="display:flex;gap:4px;margin-top:4px">
-      <button id="lk-sel-del" style="flex:1;padding:3px 0;border:1px solid #f0a0a0;border-radius:4px;background:#fff8f8;font-size:10px;cursor:pointer;font-family:inherit;color:#cc4444">🗑 Удалить</button>
-    </div>`;
+    <div style="${R}"><label style="${L}">Размер</label>
+      <input type="range" id="lk-sel-size" min="12" max="300" step="0.5" value="${blk.fontSize}" style="flex:1">
+      <span style="${V}" id="lk-sel-size-val">${blk.fontSize}</span></div>
+    <div style="${R}"><label style="${L}">Насыщ</label>
+      <select id="lk-sel-weight" style="${SEL}">
+        <option value="400" ${(blk.weight||700)==400?'selected':''}>Regular</option>
+        <option value="700" ${(blk.weight||700)==700?'selected':''}>Bold</option>
+      </select></div>
+    <div style="${R}"><label style="${L}">Выравн</label>
+      <select id="lk-sel-align" style="${SEL}">
+        <option value="left"   ${(blk.align||'left')==='left'  ?'selected':''}>Left</option>
+        <option value="center" ${(blk.align||'left')==='center'?'selected':''}>Center</option>
+        <option value="right"  ${(blk.align||'left')==='right' ?'selected':''}>Right</option>
+      </select></div>
+    <div style="${R}"><label style="${L}">Letter sp</label>
+      <input type="range" id="lk-sel-ls" min="-0.05" max="0.1" step="0.005" value="${(blk.letterSpacing||0)}" style="flex:1">
+      <span style="${V}" id="lk-sel-ls-val">${(blk.letterSpacing||0).toFixed(3)}</span></div>
+    <div style="${R}"><label style="${L}">Line h</label>
+      <input type="range" id="lk-sel-lh" min="0.8" max="1.6" step="0.05" value="${(blk.lineHeight||0.9)}" style="flex:1">
+      <span style="${V}" id="lk-sel-lh-val">${(blk.lineHeight||0.9).toFixed(2)}</span></div>
+    <div style="${R}"><label style="${L}">X</label>
+      <input type="number" id="lk-sel-x" value="${blk.x}" style="${NUM}">
+      <label style="flex:0 0 14px;font-size:10px;color:#666;text-align:center">Y</label>
+      <input type="number" id="lk-sel-y" value="${blk.y}" style="${NUM}"></div>
+    <div style="display:flex;gap:4px;margin-top:4px">${btnHtml}</div>`;
+
+  function saveBlk() { if (blk.system) saveSystemBlocks(); else saveCustomBlocks(); }
 
   document.getElementById('lk-sel-text').addEventListener('input', e => {
-    blk.text = e.target.value;
-    saveCustomBlocks();
+    blk.text = e.target.value; saveBlk();
     document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.textContent = blk.text);
   });
 
   const sizeInp = document.getElementById('lk-sel-size');
-  const sizeVal = document.getElementById('lk-sel-size-val');
   sizeInp.addEventListener('input', () => {
     blk.fontSize = parseFloat(sizeInp.value);
-    sizeVal.textContent = blk.fontSize;
-    saveCustomBlocks();
-    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => {
-      el.style.fontSize = `calc(${blk.fontSize} * var(--u))`;
-    });
+    document.getElementById('lk-sel-size-val').textContent = blk.fontSize;
+    saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
   });
 
-  document.getElementById('lk-sel-del').addEventListener('click', () => {
-    customBlocks = customBlocks.filter(b => b.id !== blk.id);
-    saveCustomBlocks();
-    document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.remove());
-    deselectLkBlock();
+  document.getElementById('lk-sel-weight').addEventListener('change', e => {
+    blk.weight = parseInt(e.target.value); saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
   });
+  document.getElementById('lk-sel-align').addEventListener('change', e => {
+    blk.align = e.target.value; saveBlk(); updateAllBlockDom(blk);
+  });
+
+  const lsInp = document.getElementById('lk-sel-ls');
+  lsInp.addEventListener('input', () => {
+    blk.letterSpacing = parseFloat(lsInp.value);
+    document.getElementById('lk-sel-ls-val').textContent = blk.letterSpacing.toFixed(3);
+    saveBlk(); updateAllBlockDom(blk);
+  });
+
+  const lhInp = document.getElementById('lk-sel-lh');
+  lhInp.addEventListener('input', () => {
+    blk.lineHeight = parseFloat(lhInp.value);
+    document.getElementById('lk-sel-lh-val').textContent = blk.lineHeight.toFixed(2);
+    saveBlk(); updateAllBlockDom(blk);
+  });
+
+  document.getElementById('lk-sel-x').addEventListener('change', e => {
+    blk.x = parseFloat(e.target.value) || 0; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
+  });
+  document.getElementById('lk-sel-y').addEventListener('change', e => {
+    blk.y = parseFloat(e.target.value) || 0; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
+  });
+
+  if (isSystem) {
+    document.getElementById('lk-sel-reset').addEventListener('click', () => {
+      const def = SYSTEM_BLOCKS_DEFAULT.find(b => b.id === blk.id);
+      if (!def) return;
+      Object.assign(blk, {...def});
+      saveSystemBlocks(); updateAllBlockDom(blk);
+      setLockupPresetUI('custom'); renderLkSelPanel();
+    });
+  } else {
+    document.getElementById('lk-sel-del').addEventListener('click', () => {
+      customBlocks = customBlocks.filter(b => b.id !== blk.id);
+      saveCustomBlocks();
+      document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.remove());
+      deselectLkBlock();
+    });
+  }
 }
 
 function addCustomBlock() {
-  const blk = { id: 'cb-' + Date.now(), text: 'Новый текст', x: 0, y: 320, fontSize: 20 };
+  const blk = { id:'cb-'+Date.now(), text:'Новый текст', fontSize:20, weight:700,
+    align:'left', letterSpacing:0, lineHeight:1.1, x:0, y:320 };
   customBlocks.push(blk);
   saveCustomBlocks();
   document.querySelectorAll('.lockup').forEach(lk => renderCustomBlocks(lk));
   if (lockupEditMode) selectLkBlock(blk.id);
+  setLockupPresetUI('custom');
 }
 
 // ── Drag system ────────────────────────────────────────────────────────────
@@ -2027,7 +2228,7 @@ stage.addEventListener('pointerdown', e => {
   const textBlock = e.target.closest('.lockup-text-block');
   const taglineEl = e.target.closest('.lockup-tagline');
   const targetEl  = textBlock || taglineEl;
-  if (!targetEl) return; // propagate normally (canvas drag still works)
+  if (!targetEl) return;
   e.stopImmediatePropagation();
   stage.setPointerCapture(e.pointerId);
 
@@ -2036,28 +2237,31 @@ stage.addEventListener('pointerdown', e => {
 
   let dragState;
   if (textBlock) {
-    const blk = customBlocks.find(b => b.id === id);
+    const allBlocks = [...systemBlocks, ...customBlocks];
+    const blk = allBlocks.find(b => b.id === id);
     if (!blk) return;
-    dragState = { type:'custom', blk, startX:e.clientX, startY:e.clientY, origX:blk.x, origY:blk.y };
+    dragState = { type:'block', blk, startX:e.clientX, startY:e.clientY, origX:blk.x, origY:blk.y };
   } else {
     dragState = { type:'tagline', startX:e.clientX, startY:e.clientY,
-      origDx: S['tagline-dx']||0, origMt: S['tagline-mt']||0 };
+      origDx:S['tagline-dx']||0, origMt:S['tagline-mt']||0 };
   }
 
   function onMove(ev) {
     const u = getU();
     const dx = (ev.clientX - dragState.startX) / u;
     const dy = (ev.clientY - dragState.startY) / u;
-    if (dragState.type === 'custom') {
+    if (dragState.type === 'block') {
       dragState.blk.x = Math.round(dragState.origX + dx);
       dragState.blk.y = Math.round(dragState.origY + dy);
       document.querySelectorAll(`.lockup-text-block[data-lk-id="${dragState.blk.id}"]`).forEach(el => {
         el.style.left = `calc(${dragState.blk.x} * var(--u))`;
         el.style.top  = `calc(${dragState.blk.y} * var(--u))`;
       });
+      const xI=document.getElementById('lk-sel-x'), yI=document.getElementById('lk-sel-y');
+      if (xI) xI.value=dragState.blk.x; if (yI) yI.value=dragState.blk.y;
     } else {
       const newDx = Math.round(dragState.origDx + dx);
-      const newMt = Math.round(Math.max(0, dragState.origMt + dy));
+      const newMt = Math.round(dragState.origMt + dy);
       S['tagline-dx'] = newDx; S['tagline-mt'] = newMt;
       root.style.setProperty('--tagline-dx', newDx);
       root.style.setProperty('--tagline-mt', newMt);
@@ -2066,11 +2270,13 @@ stage.addEventListener('pointerdown', e => {
       if (dxI) { dxI.value=newDx; dxV.textContent=newDx; }
       if (mtI) { mtI.value=newMt; mtV.textContent=newMt; }
     }
+    setLockupPresetUI('custom');
   }
 
   function onUp(ev) {
-    if (dragState.type === 'custom') saveCustomBlocks();
-    else { localStorage.setItem('dbg', JSON.stringify(S)); }
+    if (dragState.type === 'block') {
+      if (dragState.blk.system) saveSystemBlocks(); else saveCustomBlocks();
+    } else { localStorage.setItem('dbg', JSON.stringify(S)); }
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup',   onUp);
     try { stage.releasePointerCapture(ev.pointerId); } catch(_) {}
@@ -2080,7 +2286,7 @@ stage.addEventListener('pointerdown', e => {
   document.addEventListener('pointerup',   onUp);
 }, {capture: true});
 
-// Deselect on click outside a text block (bubble phase, fires only if capture didn't stopImmediatePropagation)
+// Deselect on click outside
 stage.addEventListener('pointerdown', e => {
   if (!lockupEditMode || !selLkId) return;
   if (!e.target.closest('.lockup-text-block') && !e.target.closest('.lockup-tagline')) deselectLkBlock();
@@ -2089,14 +2295,11 @@ stage.addEventListener('pointerdown', e => {
 // ── Keyboard shortcuts ─────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (!lockupEditMode || !selLkId) return;
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-
+  if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
   if (e.key === 'Escape') { deselectLkBlock(); return; }
-
   const isArrow = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key);
-  const isDelete = (e.key === 'Delete' || e.key === 'Backspace') && e.shiftKey;
+  const isDelete = (e.key==='Delete' || e.key==='Backspace') && e.shiftKey;
   if (!isArrow && !isDelete) return;
-
   e.preventDefault();
   const step = e.shiftKey && isArrow ? 10 : 1;
 
@@ -2104,17 +2307,18 @@ document.addEventListener('keydown', e => {
     if (!isArrow) return;
     if (e.key==='ArrowLeft')  S['tagline-dx'] -= step;
     if (e.key==='ArrowRight') S['tagline-dx'] += step;
-    if (e.key==='ArrowUp')    S['tagline-mt'] = Math.max(0, S['tagline-mt'] - step);
+    if (e.key==='ArrowUp')    S['tagline-mt'] -= step;
     if (e.key==='ArrowDown')  S['tagline-mt'] += step;
     applyAll();
     const dxI=document.getElementById('s-tagline-dx'), dxV=document.getElementById('v-tagline-dx');
     const mtI=document.getElementById('s-tagline-mt'), mtV=document.getElementById('v-tagline-mt');
     if (dxI) { dxI.value=S['tagline-dx']; dxV.textContent=S['tagline-dx']; }
     if (mtI) { mtI.value=S['tagline-mt']; mtV.textContent=S['tagline-mt']; }
-    return;
+    setLockupPresetUI('custom'); return;
   }
 
-  const blk = customBlocks.find(b => b.id === selLkId);
+  const allBlocks = [...systemBlocks, ...customBlocks];
+  const blk = allBlocks.find(b => b.id === selLkId);
   if (!blk) return;
 
   if (isArrow) {
@@ -2123,12 +2327,14 @@ document.addEventListener('keydown', e => {
     if (e.key==='ArrowUp')    blk.y -= step;
     if (e.key==='ArrowDown')  blk.y += step;
     document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => {
-      el.style.left = `calc(${blk.x} * var(--u))`;
-      el.style.top  = `calc(${blk.y} * var(--u))`;
+      el.style.left=`calc(${blk.x} * var(--u))`; el.style.top=`calc(${blk.y} * var(--u))`;
     });
-    saveCustomBlocks();
+    const xI=document.getElementById('lk-sel-x'), yI=document.getElementById('lk-sel-y');
+    if (xI) xI.value=blk.x; if (yI) yI.value=blk.y;
+    if (blk.system) saveSystemBlocks(); else saveCustomBlocks();
+    setLockupPresetUI('custom');
   } else {
-    // Shift+Delete: remove
+    if (blk.system) return; // cannot delete system blocks
     customBlocks = customBlocks.filter(b => b.id !== blk.id);
     saveCustomBlocks();
     document.querySelectorAll(`.lockup-text-block[data-lk-id="${blk.id}"]`).forEach(el => el.remove());
@@ -2143,12 +2349,33 @@ document.getElementById('dbg-add-text-block').addEventListener('click', () => {
   addCustomBlock();
 });
 document.getElementById('dbg-reset-lockup').addEventListener('click', () => {
-  if (!confirm('Удалить все текстовые блоки лок-апа?')) return;
+  if (!confirm('Сбросить лок-ап к Default пресету?')) return;
   customBlocks = [];
   saveCustomBlocks();
-  document.querySelectorAll('.lockup-text-block').forEach(el => el.remove());
+  systemBlocks = SYSTEM_BLOCKS_DEFAULT.map(b => ({...b}));
+  saveSystemBlocks();
+  S['tagline-dx'] = LOCKUP_PRESETS.default.tagline.dx;
+  S['tagline-mt'] = LOCKUP_PRESETS.default.tagline.mt;
+  root.style.setProperty('--tagline-align', LOCKUP_PRESETS.default.tagline.align);
+  localStorage.setItem('mm-tagline-align', LOCKUP_PRESETS.default.tagline.align);
+  document.querySelectorAll('input[name="tl-align"]').forEach(r => r.checked = r.value === LOCKUP_PRESETS.default.tagline.align);
+  applyAll();
+  const dxI=document.getElementById('s-tagline-dx'), dxV=document.getElementById('v-tagline-dx');
+  const mtI=document.getElementById('s-tagline-mt'), mtV=document.getElementById('v-tagline-mt');
+  if (dxI) { dxI.value=S['tagline-dx']; dxV.textContent=S['tagline-dx']; }
+  if (mtI) { mtI.value=S['tagline-mt']; mtV.textContent=S['tagline-mt']; }
+  document.querySelectorAll('.lockup').forEach(lk => { renderSystemBlocks(lk); renderCustomBlocks(lk); });
   deselectLkBlock();
+  setLockupPresetUI('default');
 });
+
+document.getElementById('s-lockup-preset').addEventListener('change', e => {
+  const val = e.target.value;
+  if (val !== 'custom') applyPreset(val); else setLockupPresetUI('custom');
+});
+
+// Restore preset UI
+setLockupPresetUI(currentPreset);
 
 /* ========================================================
    PRELOADER
