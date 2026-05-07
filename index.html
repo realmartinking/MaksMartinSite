@@ -1398,7 +1398,10 @@ const tileVideoObserver = new IntersectionObserver((entries) => {
       v.pause();
     }
   });
-}, { rootMargin: '400px' });
+// rootMargin 600px: compensates for CSS transform scale on .world —
+// at u < 1 (small screens) physical viewport pixels differ from design pixels,
+// so visible tiles may be outside a smaller margin.
+}, { rootMargin: '600px' });
 
 init();
 
@@ -1825,6 +1828,9 @@ world.addEventListener('pointerenter', e=>{
   }
 
   // ── Asset list ─────────────────────────────────────────
+  // Preloader only waits for: fonts + static images (png/gif).
+  // Videos are NOT tracked — they start lazily via IntersectionObserver after site shows.
+  // This prevents Safari's media-load limit from stalling progress at ~20%.
   const assets = [];
 
   // Font
@@ -1832,21 +1838,16 @@ world.addEventListener('pointerenter', e=>{
     document.fonts.ready.then(() => settle(), () => settle('fonts failed'));
   }));
 
-  // Project media — video: loadedmetadata (fast), image: onload
+  // Static images only (not videos — Safari can't load many in parallel)
   for (const p of PROJECTS) {
-    assets.push(makeAsset(settle => {
-      if (p.type === 'video') {
-        const v = document.createElement('video');
-        v.muted = true; v.preload = 'metadata'; v.src = p.src;
-        v.addEventListener('loadedmetadata', () => settle(), {once:true});
-        v.addEventListener('error', () => settle('video failed: ' + p.src), {once:true});
-      } else {
+    if (p.type !== 'video') {
+      assets.push(makeAsset(settle => {
         const img = new Image();
         img.onload  = () => settle();
         img.onerror = () => settle('image failed: ' + p.src);
         img.src = p.src;
-      }
-    }));
+      }));
+    }
   }
 
   total = assets.length;
@@ -1855,13 +1856,23 @@ world.addEventListener('pointerenter', e=>{
   // Wire each resolved asset to markOne
   assets.forEach(p => p.then(markOne));
 
-  // Global hard timeout — 12 seconds max, no matter what
-  setTimeout(() => {
-    if (!hidden) {
-      console.warn('[preloader] global timeout (12s), force hiding');
+  // Soft exit: if >= 80% done and >= 3s passed — don't wait
+  const softInterval = setInterval(() => {
+    if (hidden) { clearInterval(softInterval); return; }
+    const elapsed = Date.now() - START;
+    if (elapsed >= 3000 && total && loaded / total >= 0.8) {
+      clearInterval(softInterval);
       hidePreloader();
     }
-  }, 12000);
+  }, 200);
+
+  // Global hard timeout — 7 seconds max, no matter what
+  setTimeout(() => {
+    if (!hidden) {
+      console.warn('[preloader] hard timeout, forcing exit. loaded:', loaded, '/', total);
+      hidePreloader();
+    }
+  }, 7000);
 })();
 </script>
 </body>
