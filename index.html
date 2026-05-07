@@ -224,7 +224,7 @@
   #emblem-overlay .emb-dark  { display:none;  filter:url(#kill-black-bg); }
   :root[data-theme="dark"] #emblem-overlay .emb-light { display:none; }
   :root[data-theme="dark"] #emblem-overlay .emb-dark  { display:block; }
-  .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
+  .lockup-tagline { position:absolute; left:calc(var(--tagline-dx)*var(--u)); top:calc(var(--tagline-mt)*var(--u)); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; }
   .edit-active .lockup-tagline { cursor:text; }
 
   /* ── Chrome ── */
@@ -360,12 +360,11 @@
 
   /* Tagline — gentle, delayed */
   body.loading .lockup-tagline {
-    opacity:0; transform:translateY(8px); filter:blur(2px);
+    opacity:0; filter:blur(2px);
     transition:opacity 1000ms cubic-bezier(0.22,1,0.36,1) 600ms,
-               transform 1000ms cubic-bezier(0.22,1,0.36,1) 600ms,
                filter 800ms cubic-bezier(0.22,1,0.36,1) 600ms;
   }
-  body.reveal .lockup-tagline { opacity:1; transform:translateY(0); filter:blur(0); }
+  body.reveal .lockup-tagline { opacity:1; filter:blur(0); }
 
   /* Custom text blocks — gentle, delayed */
   body.loading .lockup-text-block:not(.system) {
@@ -490,8 +489,8 @@
 
     <div class="dbg-section">Слоган</div>
     <div class="dbg-row"><label>Размер шрифта</label><input type="range" id="s-tagline-font" min="10" max="30" step=".5"><span class="dbg-val" id="v-tagline-font"></span></div>
-    <div class="dbg-row"><label>Позиция Y</label><input type="range" id="s-tagline-mt" min="-300" max="600" step="1"><span class="dbg-val" id="v-tagline-mt"></span></div>
-    <div class="dbg-row"><label>Позиция X</label><input type="range" id="s-tagline-dx" min="-500" max="500" step="1"><span class="dbg-val" id="v-tagline-dx"></span></div>
+    <div class="dbg-row"><label>Позиция Y</label><input type="range" id="s-tagline-mt" min="-1000" max="1000" step="1"><span class="dbg-val" id="v-tagline-mt"></span></div>
+    <div class="dbg-row"><label>Позиция X</label><input type="range" id="s-tagline-dx" min="-1000" max="1000" step="1"><span class="dbg-val" id="v-tagline-dx"></span></div>
     <div class="dbg-row"><label>Ширина</label><input type="range" id="s-tagline-w" min="50" max="800" step="5"><span class="dbg-val" id="v-tagline-w"></span></div>
     <div class="dbg-row"><label>Выравнивание</label><span style="display:flex;gap:8px;font-size:10px;color:#555"><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="left" style="margin:0"> L</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="center" style="margin:0"> C</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="right" style="margin:0"> R</label></span></div>
 
