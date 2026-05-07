@@ -44,7 +44,7 @@
     --lk-font: 160; --emblem-margin: -74; --emblem-w: 245; --emblem-h: 274;
     --emblem-dx: -6; --emblem-dy: 31; --tagline-font: 15; --tagline-mt: 21;
     --tagline-dx: 200; --nav-top: 5; --nav-bottom: 8; --nav-font: 17;
-    --tagline-align: left; --lockup-offset-x: 0; --lockup-offset-y: 0;
+    --tagline-align: left; --tagline-w: 280; --lockup-offset-x: 0; --lockup-offset-y: 0;
   }
   :root { --emb-filter: url(#kill-white-bg); }
   :root[data-theme="dark"] { --bg: #000000; --fg: #ffffff; --tile-bg: #1a1a1a; --emb-filter: url(#kill-white-bg) invert(1); }
@@ -215,7 +215,7 @@
   /* Emblem overlay: synced via render loop, filter via --emb-filter */
   #emblem-overlay { position:fixed; top:0; left:0; pointer-events:none; z-index:5; overflow:hidden; }
   #emblem-overlay video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; filter:var(--emb-filter); }
-  .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(280*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
+  .lockup-tagline { position:absolute; left:0; top:calc(var(--tagline-mt)*var(--u)); transform:translateX(calc(var(--tagline-dx)*var(--u))); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; max-width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; transition:opacity 1400ms cubic-bezier(0.16,1,0.3,1) 100ms; }
   .edit-active .lockup-tagline { cursor:text; }
 
   /* ── Chrome ── */
@@ -446,6 +446,7 @@
     <div class="dbg-row"><label>Размер шрифта</label><input type="range" id="s-tagline-font" min="10" max="30" step=".5"><span class="dbg-val" id="v-tagline-font"></span></div>
     <div class="dbg-row"><label>Позиция Y</label><input type="range" id="s-tagline-mt" min="-300" max="600" step="1"><span class="dbg-val" id="v-tagline-mt"></span></div>
     <div class="dbg-row"><label>Позиция X</label><input type="range" id="s-tagline-dx" min="-500" max="500" step="1"><span class="dbg-val" id="v-tagline-dx"></span></div>
+    <div class="dbg-row"><label>Ширина</label><input type="range" id="s-tagline-w" min="50" max="800" step="5"><span class="dbg-val" id="v-tagline-w"></span></div>
     <div class="dbg-row"><label>Выравнивание</label><span style="display:flex;gap:8px;font-size:10px;color:#555"><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="left" style="margin:0"> L</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="center" style="margin:0"> C</label><label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="radio" name="tl-align" value="right" style="margin:0"> R</label></span></div>
 
     <div class="dbg-section" style="display:flex;align-items:center;justify-content:space-between">
@@ -1607,7 +1608,7 @@ sw.addEventListener('click',()=>applyTheme(root.getAttribute('data-theme')==='da
 const DEFAULTS = {
   'emblem-margin':-74,'emblem-w':245,'emblem-h':274,
   'emblem-dx':-6,'emblem-dy':31,'tagline-font':15,'tagline-mt':232,
-  'tagline-dx':-65,'nav-top':5,'nav-bottom':8,'nav-font':17,
+  'tagline-dx':-65,'tagline-w':280,'nav-top':5,'nav-bottom':8,'nav-font':17,
   'lockup-offset-x':0,'lockup-offset-y':0,
 };
 function loadSettings() {
@@ -2034,6 +2035,7 @@ function _applyBlockStyle(el, blk) {
   el.style.textAlign     = blk.align  || 'left';
   el.style.letterSpacing = `${blk.letterSpacing || 0}em`;
   el.style.lineHeight    = blk.lineHeight || 0.9;
+  el.style.maxWidth      = blk.width ? `calc(${blk.width} * var(--u))` : 'none';
 }
 
 function renderSystemBlocks(lockupEl) {
@@ -2103,7 +2105,22 @@ function renderLkSelPanel() {
   panel.style.display = 'block';
 
   if (selLkId === 'tagline') {
-    panel.innerHTML = `<div style="font-size:10px;color:#888;padding:2px 0">Слоган — настрой в разделе «Слоган» выше</div>`;
+    const curW = Math.round(S['tagline-w'] || 280);
+    panel.innerHTML = `
+      <div style="font-size:10px;color:#888;padding:2px 0 4px">Слоган</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">
+        <label style="flex:0 0 60px;font-size:10px;color:#666">Ширина</label>
+        <input type="number" id="tl-w-inp" min="50" max="1200" step="5" value="${curW}" style="flex:1;font-size:10px;padding:1px 4px;border:1px solid #ddd;border-radius:3px;background:#fafafa;color:#333;font-family:inherit;width:0">
+        <span style="font-size:9px;color:#aaa">dp</span>
+      </div>`;
+    document.getElementById('tl-w-inp').addEventListener('change', e => {
+      const v = Math.max(50, parseFloat(e.target.value) || 280);
+      e.target.value = v;
+      S['tagline-w'] = v;
+      const slInp = document.getElementById('s-tagline-w'), slVal = document.getElementById('v-tagline-w');
+      if (slInp) { slInp.value = v; } if (slVal) { slVal.textContent = v; }
+      applyAll();
+    });
     return;
   }
 
@@ -2150,6 +2167,9 @@ function renderLkSelPanel() {
       <input type="number" id="lk-sel-x" value="${blk.x}" style="${NUM}">
       <label style="flex:0 0 14px;font-size:10px;color:#666;text-align:center">Y</label>
       <input type="number" id="lk-sel-y" value="${blk.y}" style="${NUM}"></div>
+    <div style="${R}"><label style="${L}">Ширина</label>
+      <input type="number" id="lk-sel-w" min="0" step="5" placeholder="авто" value="${blk.width || ''}" style="${NUM}">
+      <span style="flex:0 0 auto;font-size:9px;color:#aaa;padding-left:2px">dp, 0=авто</span></div>
     <div style="display:flex;gap:4px;margin-top:4px">${btnHtml}</div>`;
 
   function saveBlk() { if (blk.system) saveSystemBlocks(); else saveCustomBlocks(); }
@@ -2193,6 +2213,10 @@ function renderLkSelPanel() {
   document.getElementById('lk-sel-y').addEventListener('change', e => {
     blk.y = parseFloat(e.target.value) || 0; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
   });
+  document.getElementById('lk-sel-w').addEventListener('change', e => {
+    const v = parseFloat(e.target.value);
+    blk.width = (v > 0) ? v : null; saveBlk(); updateAllBlockDom(blk);
+  });
 
   if (isSystem) {
     document.getElementById('lk-sel-reset').addEventListener('click', () => {
@@ -2214,7 +2238,7 @@ function renderLkSelPanel() {
 
 function addCustomBlock() {
   const blk = { id:'cb-'+Date.now(), text:'Новый текст', fontSize:20, weight:700,
-    align:'left', letterSpacing:0, lineHeight:1.1, x:0, y:320 };
+    align:'left', letterSpacing:0, lineHeight:1.1, x:0, y:320, width:280 };
   customBlocks.push(blk);
   saveCustomBlocks();
   document.querySelectorAll('.lockup').forEach(lk => renderCustomBlocks(lk));
