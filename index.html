@@ -299,12 +299,12 @@
   [data-theme="dark"] .prl-emblem-video.emb-light { display:none; }
   [data-theme="dark"] .prl-emblem-video.emb-dark  { display:block; }
 
-  /* Counter badge — right of emblem */
+  /* Counter badge — right of emblem, baseline-aligned with lockup letters */
   .prl-counter {
     position:absolute;
     left:calc(100% + 24px);
-    top:28%;
-    font-size:calc(40*var(--u));
+    bottom:calc(60*var(--u));
+    font-size:calc(120*var(--u));
     font-weight:700;
     color:var(--fg,#000);
     font-variant-numeric:tabular-nums;
@@ -316,10 +316,7 @@
   }
   @keyframes prl-counter-in { to { opacity:1; } }
   @media (max-width:768px) {
-    .prl-counter {
-      font-size:calc(36*100vw/600);
-      left:calc(100% + 12px);
-    }
+    .prl-counter { left:calc(100% + 12px); }
   }
 
   /* ── Reveal ── */
