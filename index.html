@@ -2113,7 +2113,7 @@ function renderLkSelPanel() {
         <input type="number" id="tl-w-inp" min="50" max="1200" step="5" value="${curW}" style="flex:1;font-size:10px;padding:1px 4px;border:1px solid #ddd;border-radius:3px;background:#fafafa;color:#333;font-family:inherit;width:0">
         <span style="font-size:9px;color:#aaa">dp</span>
       </div>`;
-    document.getElementById('tl-w-inp').addEventListener('change', e => {
+    document.getElementById('tl-w-inp').addEventListener('input', e => {
       const v = Math.max(50, parseFloat(e.target.value) || 280);
       e.target.value = v;
       S['tagline-w'] = v;
@@ -2207,13 +2207,15 @@ function renderLkSelPanel() {
     saveBlk(); updateAllBlockDom(blk);
   });
 
-  document.getElementById('lk-sel-x').addEventListener('change', e => {
-    blk.x = parseFloat(e.target.value) || 0; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
+  document.getElementById('lk-sel-x').addEventListener('input', e => {
+    const v = parseFloat(e.target.value); if (isNaN(v)) return;
+    blk.x = v; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
   });
-  document.getElementById('lk-sel-y').addEventListener('change', e => {
-    blk.y = parseFloat(e.target.value) || 0; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
+  document.getElementById('lk-sel-y').addEventListener('input', e => {
+    const v = parseFloat(e.target.value); if (isNaN(v)) return;
+    blk.y = v; saveBlk(); updateAllBlockDom(blk); setLockupPresetUI('custom');
   });
-  document.getElementById('lk-sel-w').addEventListener('change', e => {
+  document.getElementById('lk-sel-w').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
     blk.width = (v > 0) ? v : null; saveBlk(); updateAllBlockDom(blk);
   });
