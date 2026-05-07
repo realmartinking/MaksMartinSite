@@ -1496,6 +1496,7 @@ async function init() {
   //   Tier2: src deferred, IO lazy-loads when they approach viewport.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     _initDone = true;
+    syncPreloaderEmblemToLockup();
     const tier1 = [], tier2 = [];
     document.querySelectorAll('.tile video[data-src]').forEach(v => {
       const r = v.getBoundingClientRect();
@@ -2479,6 +2480,38 @@ document.getElementById('s-lockup-preset').addEventListener('change', e => {
 
 // Restore preset UI
 setLockupPresetUI(currentPreset);
+
+/* ========================================================
+   PRELOADER EMBLEM SYNC
+======================================================== */
+function syncPreloaderEmblemToLockup() {
+  const prl  = document.getElementById('preloader');
+  const wrap = prl && prl.querySelector('.prl-emblem-wrap');
+  if (!wrap) return;
+
+  // Find the .lockup-emblem slot closest to screen center
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  let bestSlot = null, bestDist = Infinity;
+  document.querySelectorAll('.lockup-emblem').forEach(slot => {
+    const r = slot.getBoundingClientRect();
+    if (r.width === 0) return;
+    const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
+    if (d < bestDist) { bestDist = d; bestSlot = slot; }
+  });
+
+  if (!bestSlot) return; // world not ready yet
+
+  const r = bestSlot.getBoundingClientRect();
+  prl.style.alignItems    = 'flex-start';
+  prl.style.justifyContent = 'flex-start';
+  wrap.style.position = 'absolute';
+  wrap.style.left   = r.left   + 'px';
+  wrap.style.top    = r.top    + 'px';
+  wrap.style.width  = r.width  + 'px';
+  wrap.style.height = r.height + 'px';
+}
+
+window.addEventListener('resize', syncPreloaderEmblemToLockup);
 
 /* ========================================================
    PRELOADER
