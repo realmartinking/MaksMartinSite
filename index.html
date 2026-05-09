@@ -226,7 +226,7 @@
   :root[data-theme="dark"] #emblem-overlay .emb-light { opacity:0; }
   :root[data-theme="dark"] #emblem-overlay .emb-dark  { opacity:1; }
   /* Canvas in preloader wrap */
-  .prl-emblem-wrap canvas.prl-emblem-video { position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:contain; }
+  .prl-emblem-wrap canvas.prl-emblem-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:contain; }
   .lockup-tagline { position:absolute; left:calc(var(--tagline-dx)*var(--u)); top:calc(var(--tagline-mt)*var(--u)); font-size:calc(var(--tagline-font)*var(--u)); font-weight:700; line-height:1; letter-spacing:-.01em; width:calc(var(--tagline-w,280)*var(--u)); text-align:var(--tagline-align,left); opacity:0; }
   .edit-active .lockup-tagline { cursor:text; }
 
@@ -295,45 +295,26 @@
   #preloader {
     position:fixed; inset:0; z-index:99999;
     background:var(--bg);
-    display:flex; align-items:center; justify-content:center;
     transition:opacity 700ms cubic-bezier(0.22,1,0.36,1);
     font-family:'Gramatika',-apple-system,sans-serif;
   }
   #preloader.hidden { opacity:0; pointer-events:none; }
   [data-theme="dark"] #preloader { background:var(--bg,#000); }
 
-  /* Emblem wrap — absolute from start, CSS-var fallback position until JS syncs */
-  .prl-emblem-wrap {
-    position:absolute;
-    opacity:0;
-    width:calc(var(--emblem-w)*var(--u));
-    height:calc(var(--emblem-h)*var(--u));
-    /* Fallback: center of viewport + emblem offset, adjusted for transform(-50%,-50%) */
-    left:calc(50vw + var(--emblem-dx)*var(--u) - var(--emblem-w)*var(--u)*0.5);
-    top:calc(50vh + var(--emblem-dy)*var(--u) - var(--emblem-h)*var(--u)*0.5);
-  }
-  .prl-emblem-video {
-    position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
-  }
-  .prl-emblem-video { display:block; transition:opacity 400ms cubic-bezier(0.22,1,0.36,1); }
-  .prl-emblem-video.emb-light { opacity:1; filter:url(#kill-white-bg); }
-  .prl-emblem-video.emb-dark  { opacity:0; filter:url(#kill-black-bg); }
-  :root[data-theme="dark"] .prl-emblem-video.emb-light { opacity:0; }
-  :root[data-theme="dark"] .prl-emblem-video.emb-dark  { opacity:1; }
+  /* Emblem wrap — mirror loop sets left/top/width/height/opacity each rAF */
+  .prl-emblem-wrap { position:absolute; opacity:0; pointer-events:none; }
+  .prl-emblem-canvas { display:block; transition:opacity 400ms cubic-bezier(0.22,1,0.36,1); }
+  .prl-emblem-canvas.emb-light { opacity:1; filter:url(#kill-white-bg); }
+  .prl-emblem-canvas.emb-dark  { opacity:0; filter:url(#kill-black-bg); }
+  :root[data-theme="dark"] .prl-emblem-canvas.emb-light { opacity:0; }
+  :root[data-theme="dark"] .prl-emblem-canvas.emb-dark  { opacity:1; }
 
-  /* Counter — same offset as Maks block in lockup: (92dp, -191dp) from emblem center */
+  /* Counter — mirror loop sets left/top/fontSize/fontWeight/letterSpacing/lineHeight from name-maks */
   .prl-counter {
     position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(calc(92*var(--u)), calc(-191*var(--u)));
-    font-size:calc(63*var(--u));
-    font-weight:700;
-    line-height:1;
     font-family:inherit;
     color:var(--fg,#000);
     font-variant-numeric:tabular-nums;
-    letter-spacing:-0.02em;
     white-space:nowrap;
     opacity:0;
     animation:prl-counter-in 600ms cubic-bezier(0.22,1,0.36,1) 200ms forwards;
@@ -403,12 +384,11 @@
 
 <div id="preloader">
   <div class="prl-emblem-wrap">
-    <video class="prl-source-light" muted autoplay loop playsinline preload="auto" style="position:absolute;left:-99999px;top:-99999px;width:1px;height:1px;opacity:0;pointer-events:none"><source src="assets/MaksMartinLogo.mp4" type="video/mp4"></video>
-    <video class="prl-source-dark"  muted autoplay loop playsinline preload="auto" style="position:absolute;left:-99999px;top:-99999px;width:1px;height:1px;opacity:0;pointer-events:none"><source src="assets/MaksMartinLogoBlack.mp4" type="video/mp4"></video>
-    <canvas class="prl-emblem-video emb-light"></canvas>
-    <canvas class="prl-emblem-video emb-dark"></canvas>
-    <div class="prl-counter">0%</div>
+    <!-- Canvases draw from overlay's emb-source-light/dark — no separate video needed -->
+    <canvas class="prl-emblem-canvas emb-light"></canvas>
+    <canvas class="prl-emblem-canvas emb-dark"></canvas>
   </div>
+  <div class="prl-counter">0%</div>
 </div>
 
 <div class="stage" id="stage">
@@ -1537,7 +1517,7 @@ async function init() {
   //   Tier2: src deferred, IO lazy-loads when they approach viewport.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     _initDone = true;
-    syncPreloaderEmblemToLockup();
+    startPreloaderMirrorLoop();
     const tier1 = [], tier2 = [];
     document.querySelectorAll('.tile video[data-src]').forEach(v => {
       const r = v.getBoundingClientRect();
@@ -1594,32 +1574,39 @@ document.addEventListener('keydown', e=>{
    Fix: draw video frames to <canvas> each RAF; apply SVG filter to canvas.
 ======================================================== */
 function startEmblemCanvasLoop() {
-  const pairs = [
-    { videoSel: '.emb-source-light',  canvasSel: '#emblem-overlay canvas.emb-light',       isDark: false },
-    { videoSel: '.emb-source-dark',   canvasSel: '#emblem-overlay canvas.emb-dark',        isDark: true  },
-    { videoSel: '.prl-source-light',  canvasSel: '.prl-emblem-wrap canvas.emb-light',      isDark: false },
-    { videoSel: '.prl-source-dark',   canvasSel: '.prl-emblem-wrap canvas.emb-dark',       isDark: true  },
+  // One source video feeds all canvases (overlay + preloader) for each theme variant
+  const sources = [
+    {
+      videoSel:   '.emb-source-light',
+      canvasSels: ['#emblem-overlay canvas.emb-light', '.prl-emblem-wrap canvas.emb-light'],
+      isDark: false,
+    },
+    {
+      videoSel:   '.emb-source-dark',
+      canvasSels: ['#emblem-overlay canvas.emb-dark',  '.prl-emblem-wrap canvas.emb-dark'],
+      isDark: true,
+    },
   ];
 
-  const items = pairs.map(p => ({
-    video:  document.querySelector(p.videoSel),
-    canvas: document.querySelector(p.canvasSel),
-    isDark: p.isDark,
-    ctx:    null,
-  })).filter(item => item.video && item.canvas);
+  const items = sources.map(s => ({
+    video:   document.querySelector(s.videoSel),
+    canvases: s.canvasSels.map(sel => document.querySelector(sel)).filter(Boolean),
+    isDark:  s.isDark,
+    ctxs:    [],
+  })).filter(item => item.video && item.canvases.length > 0);
 
   // Kick off play immediately — autoplay may not fire for offscreen elements
   items.forEach(item => item.video.play().catch(() => {}));
 
-  function ensureCanvasSize(item) {
+  function ensureCanvasSizes(item) {
     if (!item.video.videoWidth || !item.video.videoHeight) return false;
-    // Internal canvas size = native video size (preserves correct aspect ratio)
-    // CSS width:100%/height:100% + object-fit:contain handles visual scaling
-    if (item.canvas.width !== item.video.videoWidth || item.canvas.height !== item.video.videoHeight) {
-      item.canvas.width  = item.video.videoWidth;
-      item.canvas.height = item.video.videoHeight;
-    }
-    if (!item.ctx) item.ctx = item.canvas.getContext('2d');
+    item.canvases.forEach((canvas, i) => {
+      if (canvas.width !== item.video.videoWidth || canvas.height !== item.video.videoHeight) {
+        canvas.width  = item.video.videoWidth;
+        canvas.height = item.video.videoHeight;
+      }
+      if (!item.ctxs[i]) item.ctxs[i] = canvas.getContext('2d');
+    });
     return true;
   }
 
@@ -1630,14 +1617,16 @@ function startEmblemCanvasLoop() {
     const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
     const crossfading = performance.now() < crossfadeEndTime;
     for (const item of items) {
-      // Ensure video is playing (autoplay may have been deferred)
       if (item.video.paused && item.video.readyState >= 2) {
         item.video.play().catch(() => {});
       }
       const isVisible = (item.isDark === isDarkTheme);
       if ((isVisible || crossfading) && item.video.readyState >= 2) {
-        if (ensureCanvasSize(item)) {
-          item.ctx.drawImage(item.video, 0, 0, item.canvas.width, item.canvas.height);
+        if (ensureCanvasSizes(item)) {
+          item.ctxs.forEach((ctx, i) => {
+            const c = item.canvases[i];
+            ctx.drawImage(item.video, 0, 0, c.width, c.height);
+          });
         }
       }
     }
@@ -2575,35 +2564,67 @@ document.getElementById('s-lockup-preset').addEventListener('change', e => {
 setLockupPresetUI(currentPreset);
 
 /* ========================================================
-   PRELOADER EMBLEM SYNC
+   PRELOADER MIRROR LOOP
+   Reads .lockup-emblem + [data-lk-id="name-maks"] each rAF
+   and mirrors position/size/styles to preloader elements.
 ======================================================== */
-function syncPreloaderEmblemToLockup() {
-  const prl  = document.getElementById('preloader');
-  const wrap = prl && prl.querySelector('.prl-emblem-wrap');
+let _preloaderMirrorActive = false;
+function disablePreloaderMirror() { _preloaderMirrorActive = false; }
+
+function startPreloaderMirrorLoop() {
+  const prl     = document.getElementById('preloader');
+  const wrap    = prl && prl.querySelector('.prl-emblem-wrap');
+  const counter = prl && prl.querySelector('.prl-counter');
   if (!wrap) return;
+  _preloaderMirrorActive = true;
 
-  // Find the .lockup-emblem slot closest to screen center
-  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
-  let bestSlot = null, bestDist = Infinity;
-  document.querySelectorAll('.lockup-emblem').forEach(slot => {
-    const r = slot.getBoundingClientRect();
-    if (r.width === 0) return;
-    const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
-    if (d < bestDist) { bestDist = d; bestSlot = slot; }
-  });
-
-  if (bestSlot) {
-    const r = bestSlot.getBoundingClientRect();
-    wrap.style.left   = r.left   + 'px';
-    wrap.style.top    = r.top    + 'px';
-    wrap.style.width  = r.width  + 'px';
-    wrap.style.height = r.height + 'px';
+  // Mirror name-maks text styles to counter once (font params don't change during preload)
+  const nameMaks = document.querySelector('.lockup-text-block[data-lk-id="name-maks"]');
+  if (nameMaks && counter) {
+    const cs = window.getComputedStyle(nameMaks);
+    counter.style.fontSize      = cs.fontSize;
+    counter.style.fontWeight    = cs.fontWeight;
+    counter.style.letterSpacing = cs.letterSpacing;
+    counter.style.lineHeight    = cs.lineHeight;
   }
-  // Always show — either JS-positioned or CSS-var fallback is good enough
-  wrap.style.opacity = '1';
-}
 
-window.addEventListener('resize', syncPreloaderEmblemToLockup);
+  function mirrorTick() {
+    if (!_preloaderMirrorActive) return;
+
+    // Find .lockup-emblem slot closest to screen center
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    let bestSlot = null, bestDist = Infinity;
+    document.querySelectorAll('.lockup-emblem').forEach(slot => {
+      const r = slot.getBoundingClientRect();
+      if (r.width === 0) return;
+      const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
+      if (d < bestDist) { bestDist = d; bestSlot = slot; }
+    });
+
+    if (bestSlot) {
+      const r = bestSlot.getBoundingClientRect();
+      wrap.style.left    = r.left   + 'px';
+      wrap.style.top     = r.top    + 'px';
+      wrap.style.width   = r.width  + 'px';
+      wrap.style.height  = r.height + 'px';
+      wrap.style.opacity = '1';
+
+      // Mirror counter position to match the closest name-maks block
+      const closestLockup = bestSlot.closest('.lockup');
+      const nameEl = closestLockup
+        ? closestLockup.querySelector('.lockup-text-block[data-lk-id="name-maks"]')
+        : document.querySelector('.lockup-text-block[data-lk-id="name-maks"]');
+      if (nameEl && counter) {
+        const nr = nameEl.getBoundingClientRect();
+        counter.style.left = nr.left + 'px';
+        counter.style.top  = nr.top  + 'px';
+      }
+    }
+
+    requestAnimationFrame(mirrorTick);
+  }
+  mirrorTick();
+}
 
 /* ========================================================
    PRELOADER
@@ -2662,6 +2683,7 @@ window.addEventListener('resize', syncPreloaderEmblemToLockup);
     await new Promise(r => setTimeout(r, 400));
     // Step 3: dissolve preloader bg (overlay emblem already on same position)
     prl.classList.add('hidden');
+    setTimeout(disablePreloaderMirror, 800);
     // Step 4: silence — only emblem visible
     await new Promise(r => setTimeout(r, 300));
     // Step 5: stagger delays then fire reveal
