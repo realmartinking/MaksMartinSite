@@ -539,6 +539,30 @@
 </div>
 
 <script>
+/* ── Cleanup: remove mode-aware storage keys left by rolled-back mobile editor ── */
+(function cleanupModeKeys() {
+  if (localStorage.getItem('__cleanup_mode_keys_v2')) return;
+  const baseKeys = [
+    'dbg', 'layout', 'layoutBlock', 'captionSizes',
+    'tileLinks', 'tileNames',
+    'mm-lockup-custom', 'mm-lockup-system',
+    'mm-tagline-align', 'mm-tagline-id'
+  ];
+  for (const baseKey of baseKeys) {
+    const desktopKey = baseKey + '-desktop';
+    const mobileKey  = baseKey + '-mobile';
+    // If original key was removed but -desktop exists, restore it
+    if (localStorage.getItem(baseKey) === null && localStorage.getItem(desktopKey) !== null) {
+      localStorage.setItem(baseKey, localStorage.getItem(desktopKey));
+    }
+    localStorage.removeItem(desktopKey);
+    localStorage.removeItem(mobileKey);
+  }
+  localStorage.removeItem('__layout_modes_v1');
+  localStorage.setItem('__cleanup_mode_keys_v2', '1');
+  console.log('[cleanup] mode-aware storage keys cleaned up');
+})();
+
 /* ========================================================
    PROJECTS
 ======================================================== */
