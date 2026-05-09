@@ -2574,15 +2574,18 @@ let _preloaderMirrorActive = false;
 function disablePreloaderMirror() { _preloaderMirrorActive = false; }
 
 function startPreloaderMirrorLoop() {
+  console.log('[mirror] startPreloaderMirrorLoop called');
   const prl     = document.getElementById('preloader');
   const wrap    = prl && prl.querySelector('.prl-emblem-wrap');
   const counter = prl && prl.querySelector('.prl-counter');
-  if (!wrap) return;
+  console.log('[mirror] prl:', !!prl, 'wrap:', !!wrap, 'counter:', !!counter);
+  if (!wrap) { console.log('[mirror] EARLY RETURN: no wrap'); return; }
   _preloaderMirrorActive = true;
 
   // Mirror font styles from a name-maks DOM element once — getComputedStyle
   // resolves the calc() font-size to real px so no manual math needed.
   const nameMaksEl = document.querySelector('.lockup-text-block[data-lk-id="name-maks"]');
+  console.log('[mirror] nameMaksEl:', !!nameMaksEl);
   if (nameMaksEl && counter) {
     const cs = window.getComputedStyle(nameMaksEl);
     counter.style.fontSize      = cs.fontSize;
@@ -2591,8 +2594,18 @@ function startPreloaderMirrorLoop() {
     counter.style.lineHeight    = cs.lineHeight;
   }
 
+  let _tickCount = 0;
   function mirrorTick() {
-    if (!_preloaderMirrorActive) return;
+    if (!_preloaderMirrorActive) { console.log('[mirror tick] EARLY RETURN: inactive'); return; }
+
+    if (_tickCount < 3) {
+      console.log('[mirror tick]', _tickCount, {
+        active: _preloaderMirrorActive,
+        wrap_exists: !!document.querySelector('.prl-emblem-wrap'),
+        counter_exists: !!document.querySelector('.prl-counter'),
+        preloader_visible: !!document.getElementById('preloader') && !document.getElementById('preloader').classList.contains('hidden'),
+      });
+    }
 
     // Read CSS vars (design-space units, same source as .lockup-emblem)
     const rcs     = getComputedStyle(document.documentElement);
@@ -2613,6 +2626,10 @@ function startPreloaderMirrorLoop() {
     wrap.style.height  = ah + 'px';
     wrap.style.opacity = '1';
 
+    if (_tickCount === 0) {
+      console.log('[mirror tick] STYLES APPLIED:', wrap.style.left, wrap.style.top, wrap.style.width, wrap.style.height);
+    }
+
     // Position counter using name-maks design-space offset from emblem center
     // Read x/y from systemBlocks (same data the lockup uses)
     if (counter) {
@@ -2625,6 +2642,7 @@ function startPreloaderMirrorLoop() {
       counter.style.top  = (cy + maksY * u) + 'px';
     }
 
+    _tickCount++;
     requestAnimationFrame(mirrorTick);
   }
   mirrorTick();
